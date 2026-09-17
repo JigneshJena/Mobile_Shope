@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "445477932595",
+    "project_id": "mobile-shope-37b0a",
+    "storage_bucket": "mobile-shope-37b0a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:445477932595:android:8a804b7813aeb20aef5d46",
+        "android_client_info": {
+          "package_name": "com.example.s_p_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZhoDhXJAnbJKdIxt-DQiSMX_Ubxfokkk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
