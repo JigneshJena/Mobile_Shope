@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -157,14 +156,12 @@ class PdfBillService {
       );
     }
 
-    // Share / Print PDF with try-catch for MissingPluginException handling during hot restarts
+    // Share / Print PDF with fallback
     try {
       await Printing.sharePdf(
         bytes: await pdf.save(),
         filename: 'bill_${customer.name.replaceAll(' ', '_')}_$billNo.pdf',
       );
-    } on MissingPluginException {
-      // Hot restart exception — requires full app restart to bind native printing channel
     } catch (_) {
       // Fallback
     }
@@ -195,7 +192,6 @@ class PdfBillService {
         bytes: await pdf.save(),
         filename: 'bills_${customers.length}_customers.pdf',
       );
-    } on MissingPluginException {
     } catch (_) {}
   }
 
@@ -560,126 +556,5 @@ class PdfBillService {
         );
       },
     );
-  }
-
-    // Page 2: Dedicated Attached Delivery & Device Documentation Photos Page
-    if (pdfImages.isNotEmpty) {
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(32),
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      'ATTACHED DELIVERY & DEVICE DOCUMENTATION',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.green900,
-                      ),
-                    ),
-                    pw.Text(
-                      'Bill No: $billNo',
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.grey700,
-                      ),
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 6),
-                pw.Text(
-                  'Customer: ${customer.name}  •  Model: ${customer.mobileModel}',
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
-                ),
-                pw.SizedBox(height: 12),
-                pw.Divider(thickness: 1, color: PdfColors.grey300),
-                pw.SizedBox(height: 16),
-
-                pw.Expanded(
-                  child: pw.Wrap(
-                    spacing: 20,
-                    runSpacing: 20,
-                    children: List.generate(pdfImages.length, (index) {
-                      return pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Container(
-                            width: 240,
-                            height: 180,
-                            decoration: pw.BoxDecoration(
-                              border: pw.Border.all(
-                                  color: PdfColors.grey400, width: 1),
-                              borderRadius: pw.BorderRadius.circular(8),
-                            ),
-                            child: pw.ClipRRect(
-                              horizontalRadius: 7,
-                              verticalRadius: 7,
-                              child: pw.Image(
-                                pdfImages[index],
-                                fit: pw.BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          pw.SizedBox(height: 6),
-                          pw.Container(
-                            padding: const pw.EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: pw.BoxDecoration(
-                              color: PdfColors.grey200,
-                              borderRadius: pw.BorderRadius.circular(4),
-                            ),
-                            child: pw.Text(
-                              imageLabels[index],
-                              style: pw.TextStyle(
-                                fontSize: 9,
-                                fontWeight: pw.FontWeight.bold,
-                                color: PdfColors.grey900,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ),
-                ),
-
-                pw.Divider(thickness: 0.8, color: PdfColors.grey300),
-                pw.SizedBox(height: 6),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Documented by SP Mobile Repair',
-                        style: const pw.TextStyle(
-                            fontSize: 8, color: PdfColors.grey600)),
-                    pw.Text('Page 2 of 2',
-                        style: const pw.TextStyle(
-                            fontSize: 8, color: PdfColors.grey600)),
-                  ],
-                ),
-              ],
-            );
-          },
-        ),
-      );
-    }
-
-    // Share / Print PDF with try-catch for MissingPluginException handling during hot restarts
-    try {
-      await Printing.sharePdf(
-        bytes: await pdf.save(),
-        filename: 'bill_${customer.name.replaceAll(' ', '_')}_$billNo.pdf',
-      );
-    } on MissingPluginException {
-      // Hot restart exception — requires full app restart to bind native printing channel
-    } catch (_) {
-      // Fallback
-    }
   }
 }

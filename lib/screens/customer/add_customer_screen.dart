@@ -541,7 +541,7 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                             const SizedBox(height: 6),
                             DropdownButtonFormField<String?>(
                               isExpanded: true,
-                              value: _selectedPartId,
+                              initialValue: _selectedPartId,
                               decoration: const InputDecoration(
                                 contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 isDense: true,
