@@ -27,23 +27,23 @@ class StatCard extends StatelessWidget {
 
     return GlassCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      borderRadius: 14,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      borderRadius: 12,
       borderColor: color.withValues(alpha: 0.25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Top row: icon + arrow
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                child: Icon(icon, color: color, size: 15),
+                child: Icon(icon, color: color, size: 14),
               ),
               const Spacer(),
               if (onTap != null)
@@ -54,45 +54,51 @@ class StatCard extends StatelessWidget {
                 ),
             ],
           ),
-          const Spacer(),
-          // Value — scales down if too long
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-                fontSize: 15,
-                letterSpacing: -0.3,
+          // Value & Label in bottom block
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Value — scales down if too long
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    fontSize: 14,
+                    letterSpacing: -0.3,
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 1),
-          // Label
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-              fontSize: 10,
-            ),
-          ),
-          if (subtitle != null) ...[
-            Text(
-              subtitle!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 9,
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+              const SizedBox(height: 1),
+              // Label
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 10,
+                ),
               ),
-            ),
-          ],
+              if (subtitle != null) ...[
+                Text(
+                  subtitle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontSize: 9,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );

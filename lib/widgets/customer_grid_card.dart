@@ -13,10 +13,16 @@ class CustomerGridCard extends StatelessWidget {
     super.key,
     required this.customer,
     this.onTap,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onLongPress,
   });
 
   final CustomerModel customer;
   final VoidCallback? onTap;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback? onLongPress;
 
   Color _statusColor() {
     switch (customer.status) {
@@ -43,9 +49,13 @@ class CustomerGridCard extends StatelessWidget {
 
     return GlassCard(
       onTap: onTap,
+      onLongPress: onLongPress,
       padding: EdgeInsets.zero,
       borderRadius: 18,
-      borderColor: statusColor.withValues(alpha: isDark ? 0.35 : 0.25),
+      borderColor: isSelected
+          ? AppColors.secondary
+          : statusColor.withValues(alpha: isDark ? 0.35 : 0.25),
+      borderWidth: isSelected ? 2.0 : 1.2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -83,6 +93,28 @@ class CustomerGridCard extends StatelessWidget {
                 right: 8,
                 child: StatusBadge(status: customer.status),
               ),
+              // Top Left Selection Checkbox Overlay
+              if (isSelectionMode)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.secondary : Colors.black54,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      isSelected ? Icons.check : Icons.circle_outlined,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
             ],
           ),
 
@@ -162,27 +194,40 @@ class CustomerGridCard extends StatelessWidget {
                     ],
                   ),
 
-                  // Financial Due / Advance
+                  // Financial Due / Advance - wrapped in Flexible to prevent pixel overflow
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Adv: ${Formatters.currency(customer.advanceAmount)}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 10,
-                          color: theme.colorScheme.onSurfaceVariant,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Adv: ${Formatters.currency(customer.advanceAmount)}',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 10,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                         ),
                       ),
-                      Text(
-                        customer.totalPrice != null
-                            ? 'Due: ${Formatters.currency(customer.remainingBalance)}'
-                            : 'Pending',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: customer.remainingBalance > 0
-                              ? AppColors.debitRed
-                              : AppColors.creditGreen,
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            customer.totalPrice != null
+                                ? 'Due: ${Formatters.currency(customer.remainingBalance)}'
+                                : 'Pending',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: customer.remainingBalance > 0
+                                  ? AppColors.debitRed
+                                  : AppColors.creditGreen,
+                            ),
+                          ),
                         ),
                       ),
                     ],

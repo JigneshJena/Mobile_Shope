@@ -361,9 +361,8 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
           ),
         );
 
-        if (isDelivering) {
-          _generatePdfBill();
-        }
+        // Automatic PDF generation disabled as requested by user.
+        // User can tap "Generate Bill" whenever they wish.
       }
     } catch (e) {
       if (mounted) {

@@ -24,16 +24,6 @@ class PdfBillService {
   Future<void> generateAndShareBill(CustomerModel customer) async {
     final pdf = pw.Document();
 
-    // Decrypt IMEI if present
-    String? imeiDecrypted;
-    if (customer.imeiEncrypted != null && customer.imeiEncrypted!.isNotEmpty) {
-      try {
-        imeiDecrypted = EncryptionService.instance.decrypt(customer.imeiEncrypted!);
-      } catch (_) {
-        imeiDecrypted = customer.imeiEncrypted;
-      }
-    }
-
     final billNo =
         'INV-${customer.id.length >= 6 ? customer.id.substring(0, 6).toUpperCase() : customer.id.toUpperCase()}';
 
@@ -75,339 +65,502 @@ class PdfBillService {
     }
 
     // Page 1: Official Service Receipt & Invoice Details
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // 1. Header & Shop Branding
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'SP MOBILE REPAIR',
-                        style: pw.TextStyle(
-                          fontSize: 22,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.green800,
-                        ),
+    pdf.addPage(_buildReceiptPage(customer, hasAttachedPhotos: pdfImages.isNotEmpty));
+
+    // Page 2: Dedicated Attached Delivery & Device Documentation Photos Page
+    if (pdfImages.isNotEmpty) {
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'ATTACHED DELIVERY & SERVICE DOCUMENTATION',
+                      style: pw.TextStyle(
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.green900,
                       ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        'Smartphone Repair & Service Center',
+                    ),
+                    pw.Text('Bill No: $billNo',
                         style: const pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.grey700,
-                        ),
-                      ),
-                      pw.Text(
-                        'Contact / Support: +91 98765 43210',
-                        style: const pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.grey700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                            fontSize: 10, color: PdfColors.grey700)),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Customer: ${customer.name}  |  Device: ${customer.mobileModel}',
+                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey800),
+                ),
+                pw.Divider(thickness: 1, color: PdfColors.grey300),
+                pw.SizedBox(height: 12),
+                pw.Expanded(
+                  child: pw.GridView(
+                    crossAxisCount: pdfImages.length == 1 ? 1 : 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    children: List.generate(pdfImages.length, (idx) {
+                      return pw.Container(
                         decoration: pw.BoxDecoration(
-                          color: PdfColors.green100,
+                          border: pw.Border.all(
+                              color: PdfColors.grey400, width: 0.8),
                           borderRadius: pw.BorderRadius.circular(6),
                         ),
-                        child: pw.Text(
-                          'SERVICE RECEIPT / BILL',
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.center,
+                          children: [
+                            pw.Text(
+                              imageLabels[idx],
+                              style: pw.TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.grey800),
+                            ),
+                            pw.SizedBox(height: 6),
+                            pw.Expanded(
+                              child: pw.Image(
+                                pdfImages[idx],
+                                fit: pw.BoxFit.contain,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                pw.SizedBox(height: 12),
+                pw.Divider(thickness: 0.8, color: PdfColors.grey300),
+                pw.SizedBox(height: 6),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Documented by SP Mobile Repair',
+                        style: const pw.TextStyle(
+                            fontSize: 8, color: PdfColors.grey600)),
+                    pw.Text('Page 2 of 2',
+                        style: const pw.TextStyle(
+                            fontSize: 8, color: PdfColors.grey600)),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
+
+    // Share / Print PDF with try-catch for MissingPluginException handling during hot restarts
+    try {
+      await Printing.sharePdf(
+        bytes: await pdf.save(),
+        filename: 'bill_${customer.name.replaceAll(' ', '_')}_$billNo.pdf',
+      );
+    } on MissingPluginException {
+      // Hot restart exception — requires full app restart to bind native printing channel
+    } catch (_) {
+      // Fallback
+    }
+  }
+
+  /// Generates a consolidated multi-receipt PDF document for all [customers] selected,
+  /// with each customer receiving a dedicated formatted invoice/bill page.
+  Future<void> generateAndShareMultipleBills(List<CustomerModel> customers) async {
+    if (customers.isEmpty) return;
+    if (customers.length == 1) {
+      return generateAndShareBill(customers.first);
+    }
+
+    final pdf = pw.Document();
+
+    for (int i = 0; i < customers.length; i++) {
+      pdf.addPage(
+        _buildReceiptPage(
+          customers[i],
+          pageNum: i + 1,
+          totalPages: customers.length,
+        ),
+      );
+    }
+
+    try {
+      await Printing.sharePdf(
+        bytes: await pdf.save(),
+        filename: 'bills_${customers.length}_customers.pdf',
+      );
+    } on MissingPluginException {
+    } catch (_) {}
+  }
+
+  /// Internal builder for a standard A4 service receipt page.
+  pw.Page _buildReceiptPage(
+    CustomerModel customer, {
+    bool hasAttachedPhotos = false,
+    int? pageNum,
+    int? totalPages,
+  }) {
+    // Decrypt IMEI if present
+    String? imeiDecrypted;
+    if (customer.imeiEncrypted != null && customer.imeiEncrypted!.isNotEmpty) {
+      try {
+        imeiDecrypted = EncryptionService.instance.decrypt(customer.imeiEncrypted!);
+      } catch (_) {
+        imeiDecrypted = customer.imeiEncrypted;
+      }
+    }
+
+    final billNo =
+        'INV-${customer.id.length >= 6 ? customer.id.substring(0, 6).toUpperCase() : customer.id.toUpperCase()}';
+
+    return pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (pw.Context context) {
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            // 1. Header & Shop Branding
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'SP MOBILE REPAIR',
+                      style: pw.TextStyle(
+                        fontSize: 22,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.green800,
+                      ),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      'Smartphone Repair & Service Center',
+                      style: const pw.TextStyle(
+                        fontSize: 10,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.Text(
+                      'Contact / Support: +91 98765 43210',
+                      style: const pw.TextStyle(
+                        fontSize: 10,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: pw.BoxDecoration(
+                        color: PdfColors.green100,
+                        borderRadius: pw.BorderRadius.circular(6),
+                      ),
+                      child: pw.Text(
+                        'SERVICE RECEIPT / BILL',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.green900,
+                        ),
+                      ),
+                    ),
+                    pw.SizedBox(height: 6),
+                    pw.Text(
+                      'Bill No: $billNo',
+                      style: pw.TextStyle(
+                          fontSize: 11, fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.Text(
+                      'Date: ${Formatters.date(customer.dateReceived)}',
+                      style: const pw.TextStyle(
+                          fontSize: 10, color: PdfColors.grey700),
+                    ),
+                    if (pageNum != null && totalPages != null)
+                      pw.Text(
+                        'Receipt $pageNum of $totalPages',
+                        style: const pw.TextStyle(
+                            fontSize: 9, color: PdfColors.grey600),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 18),
+            pw.Divider(thickness: 1, color: PdfColors.grey300),
+            pw.SizedBox(height: 14),
+
+            // 2. Customer & Device Details (2 Columns)
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Customer Info
+                pw.Expanded(
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(12),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.grey100,
+                      borderRadius: pw.BorderRadius.circular(8),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'CUSTOMER DETAILS',
                           style: pw.TextStyle(
                             fontSize: 10,
                             fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.green900,
+                            color: PdfColors.grey800,
                           ),
                         ),
-                      ),
-                      pw.SizedBox(height: 6),
-                      pw.Text(
-                        'Bill No: $billNo',
-                        style: pw.TextStyle(
-                            fontSize: 11, fontWeight: pw.FontWeight.bold),
-                      ),
-                      pw.Text(
-                        'Date: ${Formatters.date(customer.dateReceived)}',
-                        style: const pw.TextStyle(
-                            fontSize: 10, color: PdfColors.grey700),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 20),
-              pw.Divider(thickness: 1, color: PdfColors.grey300),
-              pw.SizedBox(height: 16),
-
-              // 2. Customer & Device Details (2 Columns)
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  // Customer Info
-                  pw.Expanded(
-                    child: pw.Container(
-                      padding: const pw.EdgeInsets.all(12),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.grey100,
-                        borderRadius: pw.BorderRadius.circular(8),
-                      ),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'CUSTOMER DETAILS',
-                            style: pw.TextStyle(
-                              fontSize: 10,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.grey800,
-                            ),
-                          ),
-                          pw.SizedBox(height: 6),
-                          pw.Text(
-                            customer.name,
-                            style: pw.TextStyle(
-                                fontSize: 12, fontWeight: pw.FontWeight.bold),
-                          ),
-                          pw.SizedBox(height: 2),
-                          pw.Text('Phone: ${customer.phone}',
-                              style: const pw.TextStyle(fontSize: 10)),
-                          if (customer.address.isNotEmpty)
-                            pw.Text('Address: ${customer.address}',
-                                style: const pw.TextStyle(fontSize: 10)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  pw.SizedBox(width: 16),
-
-                  // Device Info
-                  pw.Expanded(
-                    child: pw.Container(
-                      padding: const pw.EdgeInsets.all(12),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.grey100,
-                        borderRadius: pw.BorderRadius.circular(8),
-                      ),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'DEVICE INFORMATION',
-                            style: pw.TextStyle(
-                              fontSize: 10,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.grey800,
-                            ),
-                          ),
-                          pw.SizedBox(height: 6),
-                          pw.Text(
-                            'Model: ${customer.mobileModel}',
-                            style: pw.TextStyle(
-                                fontSize: 11, fontWeight: pw.FontWeight.bold),
-                          ),
-                          pw.SizedBox(height: 2),
-                          pw.Text('Issue: ${customer.issueDescription}',
-                              style: const pw.TextStyle(fontSize: 10)),
-                          pw.Text(
-                            'Status: ${customer.status.toUpperCase().replaceAll('_', ' ')}',
-                            style: pw.TextStyle(
-                                fontSize: 10,
-                                fontWeight: pw.FontWeight.bold,
-                                color: PdfColors.orange900),
-                          ),
-                          if (customer.hasOnlineLock)
-                            pw.Text('Online Lock: YES (Remote Lock Active)',
-                                style: pw.TextStyle(
-                                    fontSize: 9, color: PdfColors.red800)),
-                          if (imeiDecrypted != null && imeiDecrypted.isNotEmpty)
-                            pw.Text('IMEI: $imeiDecrypted',
-                                style: const pw.TextStyle(
-                                    fontSize: 9, color: PdfColors.grey800)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 24),
-
-              // 3. Financial Summary Table
-              pw.Text(
-                'PAYMENT SUMMARY',
-                style: pw.TextStyle(
-                    fontSize: 11,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.grey800),
-              ),
-              pw.SizedBox(height: 8),
-
-              pw.Table(
-                border:
-                    pw.TableBorder.all(color: PdfColors.grey300, width: 0.8),
-                children: [
-                  // Table Header
-                  pw.TableRow(
-                    decoration:
-                        const pw.BoxDecoration(color: PdfColors.grey200),
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Description',
-                            style: pw.TextStyle(
-                                fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Amount',
-                            textAlign: pw.TextAlign.right,
-                            style: pw.TextStyle(
-                                fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  // Total Cost Row
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Estimated Repair Cost / Total Price',
-                            style: const pw.TextStyle(fontSize: 10)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          _pdfCurrency(customer.totalPrice),
-                          textAlign: pw.TextAlign.right,
+                        pw.SizedBox(height: 6),
+                        pw.Text(
+                          customer.name,
+                          style: pw.TextStyle(
+                              fontSize: 12, fontWeight: pw.FontWeight.bold),
+                        ),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          customer.phone.isNotEmpty && customer.phone.toLowerCase() != 'add later'
+                              ? 'Phone: ${customer.phone}'
+                              : 'Phone: (Not provided / Later)',
                           style: const pw.TextStyle(fontSize: 10),
                         ),
-                      ),
-                    ],
-                  ),
-                  // Advance Paid Row
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Advance Amount Paid',
-                            style: const pw.TextStyle(fontSize: 10)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          _pdfCurrency(customer.advanceAmount),
-                          textAlign: pw.TextAlign.right,
-                          style: pw.TextStyle(
-                              fontSize: 10,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.green800),
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Balance Remaining Row
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Balance Due at Delivery',
-                            style: pw.TextStyle(
-                                fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          _pdfCurrency(customer.remainingBalance),
-                          textAlign: pw.TextAlign.right,
-                          style: pw.TextStyle(
-                            fontSize: 11,
-                            fontWeight: pw.FontWeight.bold,
-                            color: customer.remainingBalance > 0
-                                ? PdfColors.red800
-                                : PdfColors.green800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              pw.Spacer(),
-
-              if (pdfImages.isNotEmpty)
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(8),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.blue50,
-                    borderRadius: pw.BorderRadius.circular(6),
-                  ),
-                  child: pw.Text(
-                    '📌 Note: ${pdfImages.length} Delivery Documentation Photo(s) attached on Page 2.',
-                    style: pw.TextStyle(
-                      fontSize: 9,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.blue900,
+                        if (customer.address.isNotEmpty)
+                          pw.Text('Address: ${customer.address}',
+                              style: const pw.TextStyle(fontSize: 10)),
+                      ],
                     ),
                   ),
                 ),
+                pw.SizedBox(width: 16),
 
-              pw.SizedBox(height: 12),
-              pw.Divider(thickness: 0.8, color: PdfColors.grey300),
-              pw.SizedBox(height: 8),
+                // Device Info
+                pw.Expanded(
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(12),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.grey100,
+                      borderRadius: pw.BorderRadius.circular(8),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'DEVICE INFORMATION',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.grey800,
+                          ),
+                        ),
+                        pw.SizedBox(height: 6),
+                        pw.Text(
+                          'Model: ${customer.mobileModel}',
+                          style: pw.TextStyle(
+                              fontSize: 11, fontWeight: pw.FontWeight.bold),
+                        ),
+                        pw.SizedBox(height: 2),
+                        pw.Text('Issue: ${customer.issueDescription}',
+                            style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text(
+                          'Status: ${customer.status.toUpperCase().replaceAll('_', ' ')}',
+                          style: pw.TextStyle(
+                              fontSize: 10,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.orange900),
+                        ),
+                        if (customer.hasOnlineLock)
+                          pw.Text('Online Lock: YES (Remote Lock Active)',
+                              style: pw.TextStyle(
+                                  fontSize: 9, color: PdfColors.red800)),
+                        if (imeiDecrypted != null && imeiDecrypted.isNotEmpty)
+                          pw.Text('IMEI: $imeiDecrypted',
+                              style: const pw.TextStyle(
+                                  fontSize: 9, color: PdfColors.grey800)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 20),
 
-              // 4. Terms & Signature Area
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('Terms & Conditions:',
+            // 3. Financial Summary Table
+            pw.Text(
+              'PAYMENT SUMMARY',
+              style: pw.TextStyle(
+                  fontSize: 11,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.grey800),
+            ),
+            pw.SizedBox(height: 8),
+
+            pw.Table(
+              border:
+                  pw.TableBorder.all(color: PdfColors.grey300, width: 0.8),
+              children: [
+                // Table Header
+                pw.TableRow(
+                  decoration:
+                      const pw.BoxDecoration(color: PdfColors.grey200),
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text('Description',
                           style: pw.TextStyle(
-                              fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                      pw.Text(
-                          '1. Devices not collected within 30 days are subject to shop policy.',
-                          style: const pw.TextStyle(
-                              fontSize: 7, color: PdfColors.grey700)),
-                      pw.Text(
-                          '2. Warranty covers replaced spare parts only. Physical damage voids warranty.',
-                          style: const pw.TextStyle(
-                              fontSize: 7, color: PdfColors.grey700)),
-                    ],
-                  ),
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.SizedBox(height: 14),
-                      pw.Text('Authorized Signature',
+                              fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text('Amount',
+                          textAlign: pw.TextAlign.right,
                           style: pw.TextStyle(
-                              fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('SP Mobile Repair',
-                          style: const pw.TextStyle(
-                              fontSize: 8, color: PdfColors.grey700)),
-                    ],
+                              fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                // Total Cost Row
+                pw.TableRow(
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text('Estimated Repair Cost / Total Price',
+                          style: const pw.TextStyle(fontSize: 10)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        _pdfCurrency(customer.totalPrice),
+                        textAlign: pw.TextAlign.right,
+                        style: const pw.TextStyle(fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+                // Advance Paid Row
+                pw.TableRow(
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text('Advance Amount Paid',
+                          style: const pw.TextStyle(fontSize: 10)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        _pdfCurrency(customer.advanceAmount),
+                        textAlign: pw.TextAlign.right,
+                        style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.green800),
+                      ),
+                    ),
+                  ],
+                ),
+                // Balance Remaining Row
+                pw.TableRow(
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text('Balance Due at Delivery',
+                          style: pw.TextStyle(
+                              fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        _pdfCurrency(customer.remainingBalance),
+                        textAlign: pw.TextAlign.right,
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold,
+                          color: customer.remainingBalance > 0
+                              ? PdfColors.red800
+                              : PdfColors.green800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            pw.Spacer(),
+
+            if (hasAttachedPhotos)
+              pw.Container(
+                padding: const pw.EdgeInsets.all(8),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.blue50,
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Text(
+                  '📌 Note: Delivery Documentation Photo(s) attached on Page 2.',
+                  style: pw.TextStyle(
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.blue900,
                   ),
-                ],
+                ),
               ),
-            ],
-          );
-        },
-      ),
+
+            pw.SizedBox(height: 12),
+            pw.Divider(thickness: 0.8, color: PdfColors.grey300),
+            pw.SizedBox(height: 8),
+
+            // 4. Terms & Signature Area
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Terms & Conditions:',
+                        style: pw.TextStyle(
+                            fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                    pw.Text(
+                        '1. Devices not collected within 30 days are subject to shop policy.',
+                        style: const pw.TextStyle(
+                            fontSize: 7, color: PdfColors.grey700)),
+                    pw.Text(
+                        '2. Warranty covers replaced spare parts only. Physical damage voids warranty.',
+                        style: const pw.TextStyle(
+                            fontSize: 7, color: PdfColors.grey700)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.SizedBox(height: 14),
+                    pw.Text('Authorized Signature',
+                        style: pw.TextStyle(
+                            fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('SP Mobile Repair',
+                        style: const pw.TextStyle(
+                            fontSize: 8, color: PdfColors.grey700)),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
+  }
 
     // Page 2: Dedicated Attached Delivery & Device Documentation Photos Page
     if (pdfImages.isNotEmpty) {

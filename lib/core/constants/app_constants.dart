@@ -76,10 +76,10 @@ abstract class InventoryCategory {
 // ─────────────────────────────────────────────────────────────────────────────
 abstract class AppSizes {
   // Dashboard grid
-  static const double dashboardIconSize   = 20.0;
-  static const double dashboardCardHeight = 114.0; // mainAxisExtent for stat cards
-  static const double gridCrossAxisSpacing = 12.0;
-  static const double gridMainAxisSpacing  = 12.0;
+  static const double dashboardIconSize   = 18.0;
+  static const double dashboardCardHeight = 82.0; // mainAxisExtent for compact stat cards
+  static const double gridCrossAxisSpacing = 10.0;
+  static const double gridMainAxisSpacing  = 10.0;
 
   // General spacing
   static const double pageHorizontalPadding = 16.0;

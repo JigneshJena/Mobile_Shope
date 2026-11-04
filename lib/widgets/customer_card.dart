@@ -7,10 +7,16 @@ import 'status_badge.dart';
 
 /// A modern glassmorphic card representing a customer repair job.
 class CustomerCard extends StatelessWidget {
-  const CustomerCard({super.key, required this.customer, this.onTap});
+  const CustomerCard({
+    super.key,
+    required this.customer,
+    this.onTap,
+    this.margin,
+  });
 
   final CustomerModel customer;
   final VoidCallback? onTap;
+  final EdgeInsetsGeometry? margin;
 
   Color _statusColor() {
     switch (customer.status) {
@@ -30,7 +36,7 @@ class CustomerCard extends StatelessWidget {
 
     return GlassCard(
       onTap: onTap,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: EdgeInsets.zero,
       borderColor: statusColor.withValues(alpha: 0.25),
       child: IntrinsicHeight(
@@ -50,7 +56,7 @@ class CustomerCard extends StatelessWidget {
             // Card body
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -72,7 +78,7 @@ class CustomerCard extends StatelessWidget {
                         StatusBadge(status: customer.status),
                       ],
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
 
                     // Row 2: Device Model • Phone
                     Text(
@@ -84,9 +90,9 @@ class CustomerCard extends StatelessWidget {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
-                    // Row 3: Financials (Advance & Due)
+                    // Row 3: Financials (Advance & Due) - protected against pixel overflows
                     Row(
                       children: [
                         Icon(
@@ -95,13 +101,19 @@ class CustomerCard extends StatelessWidget {
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Adv: ${Formatters.currency(customer.advanceAmount)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface,
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Adv: ${Formatters.currency(customer.advanceAmount)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         if (customer.totalPrice != null) ...[
                           Icon(
                             Icons.account_balance_wallet_outlined,
@@ -109,21 +121,33 @@ class CustomerCard extends StatelessWidget {
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            'Due: ${Formatters.currency(remaining)}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: remaining > 0
-                                  ? AppColors.debitRed
-                                  : AppColors.creditGreen,
-                              fontWeight: FontWeight.w600,
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Due: ${Formatters.currency(remaining)}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: remaining > 0
+                                      ? AppColors.debitRed
+                                      : AppColors.creditGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
                         ] else
-                          Text(
-                            'Price: Pending',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.statusPending,
-                              fontStyle: FontStyle.italic,
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Price: Pending',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.statusPending,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
                             ),
                           ),
                       ],

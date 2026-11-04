@@ -7,6 +7,7 @@ class GlassCard extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
+    this.onLongPress,
     this.padding,
     this.margin,
     this.borderRadius = 16.0,
@@ -20,6 +21,7 @@ class GlassCard extends StatefulWidget {
 
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
   final double borderRadius;
@@ -116,12 +118,13 @@ class _GlassCardState extends State<GlassCard>
       ),
     );
 
-    if (widget.onTap != null) {
+    if (widget.onTap != null || widget.onLongPress != null) {
       return GestureDetector(
         onTapDown: (_) => _pressController.forward(),
         onTapUp: (_) => _pressController.reverse(),
         onTapCancel: () => _pressController.reverse(),
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         child: AnimatedBuilder(
           animation: _scaleAnimation,
           builder: (context, child) => Transform.scale(

@@ -350,10 +350,13 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                         children: [
                           Icon(Icons.person_outline, size: 20, color: theme.colorScheme.primary),
                           const SizedBox(width: 8),
-                          Text(
-                            'Customer Information',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              'Customer Information',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -460,10 +463,13 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                         children: [
                           Icon(Icons.smartphone_outlined, size: 20, color: theme.colorScheme.primary),
                           const SizedBox(width: 8),
-                          Text(
-                            'Device & Fault Details',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              'Device & Fault Details',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -660,10 +666,13 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                         children: [
                           Icon(Icons.payments_outlined, size: 20, color: theme.colorScheme.primary),
                           const SizedBox(width: 8),
-                          Text(
-                            'Estimated Cost & Advance Payment',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              'Estimated Cost & Advance Payment',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -699,10 +708,13 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                         children: [
                           Icon(Icons.photo_camera_outlined, size: 20, color: theme.colorScheme.primary),
                           const SizedBox(width: 8),
-                          Text(
-                            'Device Photos (${_pickedImages.length}/${AppConstants.maxImages})',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              'Device Photos (${_pickedImages.length}/${AppConstants.maxImages})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

@@ -80,52 +80,60 @@ class DashboardScreen extends ConsumerWidget {
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 80),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Clean Compact Header (No "Welcome Back" text)
+              // 1. Clean Compact Header
               AnimatedEntrance(
                 duration: const Duration(milliseconds: 350),
                 child: GlassCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            userModel?.name.isNotEmpty ?? false ? userModel!.name : "Shop Manager",
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userModel?.name.isNotEmpty ?? false ? userModel!.name : "Shop Manager",
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          Text(
-                            'Shop Dashboard',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                            const SizedBox(height: 1),
+                            Text(
+                              isOwner
+                                  ? 'Owner • ${allUsersAsync.valueOrNull?.length ?? 1} Staff'
+                                  : 'Staff Member',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: isOwner ? AppColors.secondary : theme.colorScheme.onSurfaceVariant,
+                                fontWeight: isOwner ? FontWeight.w600 : FontWeight.normal,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.calendar_today_rounded,
-                              size: 14,
+                              size: 13,
                               color: theme.colorScheme.primary,
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 5),
                             Text(
                               Formatters.date(today),
-                              style: theme.textTheme.labelMedium?.copyWith(
+                              style: theme.textTheme.labelSmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: theme.colorScheme.primary,
                               ),
@@ -137,9 +145,9 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
 
-              // 2. Metrics / Stat Cards (2x2 Grid with overflow prevention)
+              // 2. Metrics / Stat Cards (Compact 2x2 Grid)
               customersAsync.when(
                 data: (customers) {
                   return inventoryAsync.when(
@@ -177,15 +185,13 @@ class DashboardScreen extends ConsumerWidget {
                           .where((c) => c.status == RepairStatus.delivered)
                           .length;
 
-                      final employeeCount = allUsersAsync.valueOrNull?.length ?? 0;
-
                       return AnimatedEntrance(
                         delay: const Duration(milliseconds: 100),
                         child: GridView(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+                            crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
                             crossAxisSpacing: AppSizes.gridCrossAxisSpacing,
                             mainAxisSpacing: AppSizes.gridMainAxisSpacing,
                             mainAxisExtent: AppSizes.dashboardCardHeight,
@@ -205,24 +211,18 @@ class DashboardScreen extends ConsumerWidget {
                             ),
                             StatCard(
                               label: 'Delivered Devices',
-                              value: '$todayDeliveredCount ($totalDeliveredCount total)',
+                              value: '$todayDeliveredCount ($totalDeliveredCount)',
                               icon: Icons.check_circle_outline_rounded,
                               color: AppColors.creditGreen,
                             ),
-                            if (isOwner) ...[
+                            if (isOwner)
                               StatCard(
                                 label: "Today's Revenue",
                                 value: Formatters.currency(todayAdvance),
                                 icon: Icons.currency_rupee_rounded,
                                 color: AppColors.creditGreen,
-                              ),
-                              StatCard(
-                                label: 'Total Employees',
-                                value: '$employeeCount',
-                                icon: Icons.badge_rounded,
-                                color: AppColors.secondary,
-                              ),
-                            ] else
+                              )
+                            else
                               StatCard(
                                 label: 'New Parts Today',
                                 value: '$todayStockCount items',
@@ -254,9 +254,9 @@ class DashboardScreen extends ConsumerWidget {
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
 
-              // 3. Section: Active Repair Jobs
+              // 3. Section: Active Repair Jobs (Prominently visible)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -268,7 +268,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
 
               customersAsync.when(
                 data: (customers) {
@@ -314,6 +314,7 @@ class DashboardScreen extends ConsumerWidget {
                         delay: Duration(milliseconds: 150 + (index * 40)),
                         child: CustomerCard(
                           customer: job,
+                          margin: const EdgeInsets.only(bottom: 8),
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
