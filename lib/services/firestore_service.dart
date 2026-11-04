@@ -118,6 +118,34 @@ class FirestoreService {
     });
   }
 
+  /// Deducts stock quantity when a spare part is used for a repair job.
+  /// If quantity falls to or below 0, quantity is set to 0.
+  Future<void> decrementInventoryStock(String itemId, {int amount = 1}) async {
+    final docRef = _db.collection('inventory').doc(itemId);
+    await _db.runTransaction((transaction) async {
+      final snap = await transaction.get(docRef);
+      if (!snap.exists) return;
+      final currentQty = (snap.data()?['quantity'] as num? ?? 0).toInt();
+      final newQty = (currentQty - amount) > 0 ? (currentQty - amount) : 0;
+      transaction.update(docRef, {
+        'quantity': newQty,
+      });
+    });
+  }
+
+  /// Restores stock quantity if a repair order is reopened or undone.
+  Future<void> incrementInventoryStock(String itemId, {int amount = 1}) async {
+    final docRef = _db.collection('inventory').doc(itemId);
+    await _db.runTransaction((transaction) async {
+      final snap = await transaction.get(docRef);
+      if (!snap.exists) return;
+      final currentQty = (snap.data()?['quantity'] as num? ?? 0).toInt();
+      transaction.update(docRef, {
+        'quantity': currentQty + amount,
+      });
+    });
+  }
+
   /// Real-time stream of all inventory items, newest first.
   Stream<List<InventoryModel>> streamInventory() {
     return _db

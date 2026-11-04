@@ -7,8 +7,10 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../models/customer_model.dart';
+import '../../models/inventory_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/customer_provider.dart';
+import '../../providers/inventory_provider.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/encryption_service.dart';
 import '../../services/pdf_bill_service.dart';
@@ -49,6 +51,13 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
     final unrepairedController = TextEditingController(
       text: _customer.unrepairedIssues ?? '',
     );
+
+    final allInventory = ref.read(inventoryStreamProvider).value ?? [];
+    final activeStock = allInventory
+        .where((i) => !i.isReturned && (i.quantity > 0 || i.id == _customer.usedPartId))
+        .toList();
+
+    String? selectedPartId = _customer.usedPartId;
 
     return showDialog<Map<String, dynamic>>(
       context: context,
@@ -117,6 +126,74 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // Inventory Part Selection (Stock deduction linking)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.inventory_2_outlined, size: 16, color: Theme.of(context).colorScheme.primary),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Spare Part Used (From Stock):',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String?>(
+                            isExpanded: true,
+                            initialValue: selectedPartId,
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                            hint: const Text('None / No part used from stock', style: TextStyle(fontSize: 12)),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('None (No part deducted)', style: TextStyle(fontSize: 12)),
+                              ),
+                              ...activeStock.map((part) {
+                                return DropdownMenuItem<String?>(
+                                  value: part.id,
+                                  child: Text(
+                                    '${part.itemName} (Stock: ${part.quantity})',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (val) {
+                              setDialogState(() {
+                                selectedPartId = val;
+                              });
+                            },
+                          ),
+                          if (selectedPartId != null) ...[
+                            const SizedBox(height: 4),
+                            const Text(
+                              '✓ 1 unit will be deducted from inventory upon delivery',
+                              style: TextStyle(fontSize: 10, color: AppColors.creditGreen, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
                     AppTextField(
                       label: 'Unrepaired / Known Defects (Notes for future visits)',
                       hint: 'e.g. Display replaced; customer declined battery repair',
@@ -170,11 +247,29 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
                   onPressed: () {
                     final finalTotal = double.tryParse(costController.text.trim()) ?? total;
                     final paidNowVal = double.tryParse(paidNowController.text.trim()) ?? 0.0;
+                    String? partName;
+                    if (selectedPartId != null) {
+                      final match = activeStock.firstWhere(
+                        (i) => i.id == selectedPartId,
+                        orElse: () => InventoryModel(
+                          id: '',
+                          itemName: _customer.usedPartName ?? 'Spare Part',
+                          category: '',
+                          quantity: 0,
+                          purchasePrice: 0,
+                          dateAdded: DateTime.now(),
+                        ),
+                      );
+                      partName = match.itemName;
+                    }
+
                     Navigator.of(ctx).pop({
                       'totalPrice': finalTotal,
                       'newAdvance': advance + paidNowVal,
                       'unrepairedIssues': unrepairedController.text.trim(),
                       'photos': deliveryFiles,
+                      'usedPartId': selectedPartId,
+                      'usedPartName': partName,
                     });
                   },
                   child: const Text('Confirm Delivery'),
@@ -194,6 +289,8 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
     double? newTotalPrice = _customer.totalPrice;
     double newAdvance = _customer.advanceAmount;
     String? newUnrepaired = _customer.unrepairedIssues;
+    String? selectedPartId = _customer.usedPartId;
+    String? selectedPartName = _customer.usedPartName;
 
     if (isDelivering) {
       final deliveryResult = await _showDeliveryConfirmationDialog();
@@ -205,6 +302,9 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
       if (unrepairedText != null && unrepairedText.isNotEmpty) {
         newUnrepaired = unrepairedText;
       }
+
+      selectedPartId = deliveryResult['usedPartId'] as String?;
+      selectedPartName = deliveryResult['usedPartName'] as String?;
 
       final photosCaptured = deliveryResult['photos'] as List<File>;
       if (photosCaptured.isNotEmpty) {
@@ -234,18 +334,29 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
         advanceAmount: newAdvance,
         unrepairedIssues: newUnrepaired,
         imageUrls: updatedImageUrls,
+        usedPartId: selectedPartId,
+        usedPartName: selectedPartName,
       );
 
-      await ref.read(customerNotifierProvider.notifier).addCustomer(updatedCustomer);
+      // FIX: Call updateCustomer instead of addCustomer to prevent creating duplicates!
+      await ref.read(customerNotifierProvider.notifier).updateCustomer(updatedCustomer);
+
+      // Stock deduction linking: When delivered, deduct 1 unit of the used part from stock
+      if (isDelivering && selectedPartId != null && selectedPartId.isNotEmpty) {
+        await ref.read(inventoryNotifierProvider.notifier).decrementStock(selectedPartId, amount: 1);
+      }
 
       setState(() {
         _customer = updatedCustomer;
       });
 
       if (mounted) {
+        final partMsg = (isDelivering && selectedPartName != null && selectedPartName.isNotEmpty)
+            ? '\nStock deducted for: $selectedPartName'
+            : '';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Status updated: ${RepairStatus.label(newStatus)}'),
+            content: Text('Status updated: ${RepairStatus.label(newStatus)}$partMsg'),
             backgroundColor: AppColors.creditGreen,
           ),
         );
@@ -284,6 +395,10 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
     );
 
     if (confirm == true) {
+      // If a part was used, restore 1 unit to stock when reopened
+      if (_customer.usedPartId != null && _customer.usedPartId!.isNotEmpty) {
+        await ref.read(inventoryNotifierProvider.notifier).incrementStock(_customer.usedPartId!, amount: 1);
+      }
       await _updateStatus(RepairStatus.inProgress);
     }
   }
@@ -719,7 +834,12 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
                   _InfoRow(
                     icon: Icons.phone_outlined,
                     label: 'Phone Number',
-                    value: _customer.phone,
+                    value: _customer.phone.isEmpty || _customer.phone.toLowerCase() == 'add later'
+                        ? 'Add Later / Not Provided'
+                        : _customer.phone,
+                    valueColor: _customer.phone.isEmpty || _customer.phone.toLowerCase() == 'add later'
+                        ? AppColors.secondary
+                        : null,
                   ),
                   if (_customer.address.isNotEmpty)
                     _InfoRow(
@@ -737,6 +857,13 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
                     label: 'Fault Description',
                     value: _customer.issueDescription,
                   ),
+                  if (_customer.usedPartName != null && _customer.usedPartName!.isNotEmpty)
+                    _InfoRow(
+                      icon: Icons.inventory_2_outlined,
+                      label: 'Spare Part Used from Stock',
+                      value: _customer.usedPartName!,
+                      valueColor: AppColors.primary,
+                    ),
                   if (_customer.unrepairedIssues != null && _customer.unrepairedIssues!.isNotEmpty)
                     _InfoRow(
                       icon: Icons.warning_amber_rounded,

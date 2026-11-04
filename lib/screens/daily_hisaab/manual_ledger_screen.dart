@@ -44,6 +44,7 @@ class _ManualLedgerScreenState extends ConsumerState<ManualLedgerScreen> {
   Future<void> _showAddEntryBottomSheet({ManualLedgerEntry? editItem}) async {
     final modelController = TextEditingController(text: editItem?.model ?? '');
     final workController = TextEditingController(text: editItem?.work ?? '');
+    final modelFocusNode = FocusNode();
     final cashController = TextEditingController(
       text: editItem != null && editItem.cashAmount > 0
           ? editItem.cashAmount.toStringAsFixed(0)
@@ -100,6 +101,7 @@ class _ManualLedgerScreenState extends ConsumerState<ManualLedgerScreen> {
                       label: 'Mobile Model *',
                       hint: 'e.g. Redmi Note 8 / Vivo Y20',
                       controller: modelController,
+                      focusNode: modelFocusNode,
                     ),
                     const SizedBox(height: 12),
                     AppTextField(
@@ -165,43 +167,105 @@ class _ManualLedgerScreenState extends ConsumerState<ManualLedgerScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final model = modelController.text.trim();
-                        final work = workController.text.trim();
-                        if (model.isNotEmpty && work.isNotEmpty && (cash > 0 || online > 0)) {
-                          final firestore = ref.read(firestoreServiceProvider);
-                          if (editItem != null) {
-                            await firestore.updateManualLedgerEntry(
-                              editItem.copyWith(
-                                model: model,
-                                work: work,
-                                cashAmount: cash,
-                                onlineAmount: online,
-                              ),
-                            );
+                    Builder(
+                      builder: (bContext) {
+                        Future<void> saveRow({required bool closeSheet}) async {
+                          final model = modelController.text.trim();
+                          final work = workController.text.trim();
+                          if (model.isNotEmpty && work.isNotEmpty && (cash > 0 || online > 0)) {
+                            final firestore = ref.read(firestoreServiceProvider);
+                            if (editItem != null) {
+                              await firestore.updateManualLedgerEntry(
+                                editItem.copyWith(
+                                  model: model,
+                                  work: work,
+                                  cashAmount: cash,
+                                  onlineAmount: online,
+                                ),
+                              );
+                            } else {
+                              await firestore.addManualLedgerEntry(
+                                ManualLedgerEntry(
+                                  id: '',
+                                  model: model,
+                                  work: work,
+                                  cashAmount: cash,
+                                  onlineAmount: online,
+                                  date: widget.date,
+                                ),
+                              );
+                            }
+
+                            if (closeSheet) {
+                              if (ctx.mounted) Navigator.of(ctx).pop();
+                            } else {
+                              modelController.clear();
+                              workController.clear();
+                              cashController.clear();
+                              onlineController.clear();
+                              setSheetState(() {});
+                              modelFocusNode.requestFocus();
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('✓ Entry for "$model" saved! Enter next.'),
+                                    duration: const Duration(seconds: 1),
+                                    backgroundColor: AppColors.creditGreen,
+                                  ),
+                                );
+                              }
+                            }
                           } else {
-                            await firestore.addManualLedgerEntry(
-                              ManualLedgerEntry(
-                                id: '',
-                                model: model,
-                                work: work,
-                                cashAmount: cash,
-                                onlineAmount: online,
-                                date: widget.date,
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please enter Model, Work, and at least one payment amount.'),
                               ),
                             );
                           }
-                          if (ctx.mounted) Navigator.of(ctx).pop();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please enter Model, Work, and at least one payment amount.'),
-                            ),
+                        }
+
+                        if (editItem != null) {
+                          return ElevatedButton(
+                            onPressed: () => saveRow(closeSheet: true),
+                            child: const Text('Update Row'),
                           );
                         }
+
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => saveRow(closeSheet: true),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                child: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text('Save & Close', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => saveRow(closeSheet: false),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: const Icon(Icons.add_rounded, size: 18),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text('Save & Add Next', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
                       },
-                      child: Text(editItem != null ? 'Update Row' : 'Save Row Entry'),
                     ),
                   ],
                 ),

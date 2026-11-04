@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/inventory_model.dart';
 import '../services/firestore_service.dart';
 import 'customer_provider.dart'; // re-exports firestoreServiceProvider
@@ -59,6 +59,24 @@ class InventoryNotifier extends StateNotifier<AsyncValue<void>> {
     try {
       await _firestore.markItemReturned(itemId);
       state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  /// Deducts quantity from an inventory stock item when used in a repair.
+  Future<void> decrementStock(String itemId, {int amount = 1}) async {
+    try {
+      await _firestore.decrementInventoryStock(itemId, amount: amount);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  /// Restores quantity to an inventory stock item if repair is reopened.
+  Future<void> incrementStock(String itemId, {int amount = 1}) async {
+    try {
+      await _firestore.incrementInventoryStock(itemId, amount: amount);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }

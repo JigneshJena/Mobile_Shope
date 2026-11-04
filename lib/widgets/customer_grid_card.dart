@@ -145,9 +145,13 @@ class CustomerGridCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              customer.phone,
+                              customer.phone.isEmpty || customer.phone.toLowerCase() == 'add later'
+                                  ? 'No Phone (Add Later)'
+                                  : customer.phone,
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: customer.phone.isEmpty || customer.phone.toLowerCase() == 'add later'
+                                    ? AppColors.secondary
+                                    : theme.colorScheme.onSurfaceVariant,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

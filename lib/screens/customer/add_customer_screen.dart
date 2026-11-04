@@ -5,8 +5,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/customer_model.dart';
+import '../../models/inventory_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/customer_provider.dart';
+import '../../providers/inventory_provider.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/encryption_service.dart';
 import '../../widgets/common/app_button.dart';
@@ -38,6 +40,9 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
   bool _isUploading = false;
   String _uploadStatus = '';
   bool _hasOnlineLock = false;
+  bool _addPhoneLater = false;
+  String? _selectedPartId;
+  String? _selectedPartName;
 
   CustomerModel? _matchedPastCustomer;
 
@@ -123,71 +128,77 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
     if (_isUploading) return; // Prevent double click duplicate submission
 
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
+    final phone = _addPhoneLater && _phoneController.text.trim().isEmpty
+        ? 'Add Later'
+        : _phoneController.text.trim();
     final model = _modelController.text.trim();
     final allCustomers = ref.read(customersStreamProvider).value ?? [];
 
-    // Block 100% exact duplicates: same name + phone + model (case-insensitive)
-    final exactDuplicate = allCustomers.any(
-      (c) =>
-          c.name.toLowerCase() == name.toLowerCase() &&
-          c.phone == phone &&
-          c.mobileModel.toLowerCase() == model.toLowerCase(),
-    );
+    final isRealPhone = phone.isNotEmpty && phone.toLowerCase() != 'add later';
 
-    if (exactDuplicate) {
-      await showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Duplicate Entry Detected'),
-          content: Text(
-            'A record already exists for:\n\nName: $name\nPhone: $phone\nModel: $model\n\nThis is a 100% identical entry. Please change at least one field (e.g., issue description or advance amount) if this is a new repair.',
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
+    if (isRealPhone) {
+      // Block 100% exact duplicates: same name + phone + model (case-insensitive)
+      final exactDuplicate = allCustomers.any(
+        (c) =>
+            c.name.toLowerCase() == name.toLowerCase() &&
+            c.phone == phone &&
+            c.mobileModel.toLowerCase() == model.toLowerCase(),
+      );
+
+      if (exactDuplicate) {
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Duplicate Entry Detected'),
+            content: Text(
+              'A record already exists for:\n\nName: $name\nPhone: $phone\nModel: $model\n\nThis is a 100% identical entry. Please change at least one field (e.g., issue description or advance amount) if this is a new repair.',
             ),
-          ],
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // Warn about active repair (same phone + model, any name) — but allow continuation
+      final activeDuplicate = allCustomers.firstWhere(
+        (c) =>
+            c.phone == phone &&
+            c.mobileModel.toLowerCase() == model.toLowerCase() &&
+            c.status != RepairStatus.delivered,
+        orElse: () => CustomerModel(
+          id: 'none', name: '', phone: '', address: '', mobileModel: '',
+          issueDescription: '', imageUrls: [], advanceAmount: 0, status: '',
+          dateReceived: DateTime.now(), handledBy: '', createdAt: DateTime.now(),
         ),
       );
-      return;
-    }
 
-    // Warn about active repair (same phone + model, any name) — but allow continuation
-    final activeDuplicate = allCustomers.firstWhere(
-      (c) =>
-          c.phone == phone &&
-          c.mobileModel.toLowerCase() == model.toLowerCase() &&
-          c.status != RepairStatus.delivered,
-      orElse: () => CustomerModel(
-        id: 'none', name: '', phone: '', address: '', mobileModel: '',
-        issueDescription: '', imageUrls: [], advanceAmount: 0, status: '',
-        dateReceived: DateTime.now(), handledBy: '', createdAt: DateTime.now(),
-      ),
-    );
-
-    if (activeDuplicate.id != 'none') {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Active Repair Order Exists'),
-          content: Text(
-            'An active repair order already exists for $phone ($model).\n\nDo you want to create another new repair entry for this device?',
+      if (activeDuplicate.id != 'none') {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Active Repair Order Exists'),
+            content: Text(
+              'An active repair order already exists for $phone ($model).\n\nDo you want to create another new repair entry for this device?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Create New Order'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Create New Order'),
-            ),
-          ],
-        ),
-      );
-      if (confirm != true) return;
+        );
+        if (confirm != true) return;
+      }
     }
 
 
@@ -239,6 +250,8 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
         imeiEncrypted: imeiEncrypted,
         hasOnlineLock: _hasOnlineLock,
         unrepairedIssues: unrepairedText.isNotEmpty ? unrepairedText : null,
+        usedPartId: _selectedPartId,
+        usedPartName: _selectedPartName,
       );
 
       await ref.read(customerNotifierProvider.notifier).addCustomer(customer);
@@ -274,6 +287,8 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final allInventory = ref.watch(inventoryStreamProvider).value ?? [];
+    final activeStock = allInventory.where((i) => !i.isReturned && i.quantity > 0).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -358,20 +373,70 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                       ),
                       const SizedBox(height: 12),
                       AppTextField(
-                        label: 'Mobile Number *',
-                        hint: '10-digit phone number',
+                        label: _addPhoneLater ? 'Mobile Number (Optional - Add Later)' : 'Mobile Number *',
+                        hint: _addPhoneLater ? 'Will add later / not provided' : '10-digit phone number',
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         prefixIcon: const Icon(Icons.phone_outlined),
+                        enabled: !_addPhoneLater,
                         validator: (val) {
+                          if (_addPhoneLater) return null;
                           if (val == null || val.trim().isEmpty) {
-                            return 'Please enter phone number';
+                            return 'Please enter phone number or tick "Add Later"';
                           }
                           if (val.trim().length < 10) {
                             return 'Please enter a valid 10-digit number';
                           }
                           return null;
                         },
+                      ),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _addPhoneLater = !_addPhoneLater;
+                            if (_addPhoneLater) {
+                              _phoneController.clear();
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: Checkbox(
+                                  value: _addPhoneLater,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _addPhoneLater = val ?? false;
+                                      if (_addPhoneLater) {
+                                        _phoneController.clear();
+                                      }
+                                    });
+                                  },
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Customer does not have / remember phone (Add Later)',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: _addPhoneLater
+                                        ? AppColors.secondary
+                                        : theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       AppTextField(
@@ -439,6 +504,98 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                       ),
                       const SizedBox(height: 12),
 
+                      // Spare Part from Inventory (Optional Stock Linking)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.inventory_2_outlined, size: 18, color: theme.colorScheme.primary),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Link Spare Part from Stock (Optional)',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            DropdownButtonFormField<String?>(
+                              isExpanded: true,
+                              value: _selectedPartId,
+                              decoration: const InputDecoration(
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                              ),
+                              hint: const Text('None (No part linked)', style: TextStyle(fontSize: 12)),
+                              items: [
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('None (No part linked from stock)', style: TextStyle(fontSize: 12)),
+                                ),
+                                ...activeStock.map((part) {
+                                  return DropdownMenuItem<String?>(
+                                    value: part.id,
+                                    child: Text(
+                                      '${part.itemName} (Stock: ${part.quantity})',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }),
+                              ],
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedPartId = val;
+                                  if (val != null) {
+                                    final match = activeStock.firstWhere(
+                                      (i) => i.id == val,
+                                      orElse: () => InventoryModel(
+                                        id: '',
+                                        itemName: 'Part',
+                                        category: '',
+                                        quantity: 0,
+                                        purchasePrice: 0,
+                                        dateAdded: DateTime.now(),
+                                      ),
+                                    );
+                                    _selectedPartName = match.itemName;
+                                  } else {
+                                    _selectedPartName = null;
+                                  }
+                                });
+                              },
+                            ),
+                            if (_selectedPartName != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                '✓ Will deduct 1 unit from stock when marked Delivered',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.creditGreen,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
                       // Online Lock Toggle
                       Container(
                         decoration: BoxDecoration(
@@ -453,16 +610,22 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                           ),
                         ),
                         child: SwitchListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           activeThumbColor: AppColors.error,
-                          title: Text(
-                            'Online / iCloud Lock Present',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _hasOnlineLock ? AppColors.error : null,
+                          title: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Online / iCloud Lock Present',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _hasOnlineLock ? AppColors.error : null,
+                              ),
                             ),
                           ),
                           subtitle: const Text(
@@ -603,16 +766,22 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () => _pickImage(ImageSource.camera),
-                                icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                                label: const Text('Take Photo'),
+                                icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text('Take Photo', style: TextStyle(fontSize: 12)),
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () => _pickImage(ImageSource.gallery),
-                                icon: const Icon(Icons.photo_library_outlined, size: 18),
-                                label: const Text('From Gallery'),
+                                icon: const Icon(Icons.photo_library_outlined, size: 16),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text('From Gallery', style: TextStyle(fontSize: 12)),
+                                ),
                               ),
                             ),
                           ],

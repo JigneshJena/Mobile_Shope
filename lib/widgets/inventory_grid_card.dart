@@ -62,7 +62,8 @@ class InventoryGridCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isLowStock = !item.isReturned && item.quantity <= 2;
+    final isOutOfStock = !item.isReturned && item.quantity <= 0;
+    final isLowStock = !item.isReturned && item.quantity > 0 && item.quantity <= 2;
     final catColor = _categoryColor();
     final catIcon = _categoryIcon();
     final hasImage = item.imageUrl != null && item.imageUrl!.isNotEmpty;
@@ -70,23 +71,23 @@ class InventoryGridCard extends StatelessWidget {
     return GlassCard(
       onTap: onTap,
       padding: EdgeInsets.zero,
-      borderRadius: 18,
-      borderColor: isLowStock
-          ? AppColors.warning.withValues(alpha: 0.5)
-          : null,
+      borderRadius: 14,
+      borderColor: isOutOfStock
+          ? AppColors.debitRed.withValues(alpha: 0.5)
+          : (isLowStock ? AppColors.warning.withValues(alpha: 0.5) : null),
       child: Stack(
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Image / Category Graphic Banner
+              // Top Image / Category Graphic Banner (Compact)
               Container(
-                height: 90,
+                height: 70,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: catColor.withValues(alpha: isDark ? 0.2 : 0.12),
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(18),
+                    top: Radius.circular(14),
                   ),
                 ),
                 child: hasImage
@@ -101,35 +102,35 @@ class InventoryGridCard extends StatelessWidget {
                         ),
                         errorWidget: (context, url, error) => Center(
                           child: Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: catColor.withValues(alpha: 0.18),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(catIcon, size: 32, color: catColor),
+                            child: Icon(catIcon, size: 24, color: catColor),
                           ),
                         ),
                       )
                     : Center(
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: catColor.withValues(alpha: 0.18),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             catIcon,
-                            size: 32,
+                            size: 24,
                             color: catColor,
                           ),
                         ),
                       ),
               ),
 
-              // Card Info Body
+              // Card Info Body (Compact)
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -145,7 +146,7 @@ class InventoryGridCard extends StatelessWidget {
                                   item.name,
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                     color: theme.colorScheme.onSurface,
                                   ),
                                   maxLines: 1,
@@ -154,26 +155,45 @@ class InventoryGridCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 3),
 
-
-                          // Quantity & Low Stock Indicator
+                          // Quantity & Stock Status Indicator
                           Row(
                             children: [
                               Text(
                                 'Qty: ${item.quantity}',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  color: isLowStock
-                                      ? AppColors.warning
-                                      : theme.colorScheme.onSurface,
+                                  fontSize: 11,
+                                  color: isOutOfStock
+                                      ? AppColors.debitRed
+                                      : (isLowStock ? AppColors.warning : theme.colorScheme.onSurface),
                                 ),
                               ),
-                              if (isLowStock) ...[
-                                const SizedBox(width: 6),
+                              if (isOutOfStock) ...[
+                                const SizedBox(width: 4),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 1),
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.debitRed.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: AppColors.debitRed.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Empty',
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      color: AppColors.debitRed,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ] else if (isLowStock) ...[
+                                const SizedBox(width: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                                   decoration: BoxDecoration(
                                     color: AppColors.warning.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(4),
@@ -184,7 +204,7 @@ class InventoryGridCard extends StatelessWidget {
                                   child: const Text(
                                     'Low',
                                     style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: 8.5,
                                       color: AppColors.warning,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -193,12 +213,13 @@ class InventoryGridCard extends StatelessWidget {
                               ],
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
 
                           // Unit price
                           Text(
                             '${Formatters.currency(item.purchasePricePerUnit)} / unit',
                             style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 10,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                             maxLines: 1,
@@ -217,6 +238,7 @@ class InventoryGridCard extends StatelessWidget {
                               Text(
                                 'Total:',
                                 style: theme.textTheme.labelSmall?.copyWith(
+                                  fontSize: 10,
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
@@ -224,32 +246,35 @@ class InventoryGridCard extends StatelessWidget {
                                 Formatters.currency(item.totalValue),
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 12,
                                   color: AppColors.primary,
                                 ),
                               ),
                             ],
                           ),
-                          if (!item.isReturned && onMarkReturned != null) ...[
-                            const SizedBox(height: 6),
+                          // Do NOT show return button if stock is finished / quantity <= 0
+                          if (!item.isReturned && item.quantity > 0 && onMarkReturned != null) ...[
+                            const SizedBox(height: 4),
                             SizedBox(
                               width: double.infinity,
-                              height: 30,
+                              height: 26,
                               child: OutlinedButton(
                                 onPressed: onMarkReturned,
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.debitRed,
                                   padding: EdgeInsets.zero,
+                                  visualDensity: VisualDensity.compact,
                                   side: BorderSide(
                                     color: AppColors.debitRed.withValues(alpha: 0.4),
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
                                 child: const Text(
                                   'Return',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),

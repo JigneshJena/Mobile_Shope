@@ -256,20 +256,17 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
           ),
         ],
       ),
-      // Compact & modern FAB positioned at the BOTTOM of the Customer Page
+      // Sleek & well-positioned circular FAB safely above the bottom navigation bar
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 70, right: 8),
-        child: FloatingActionButton.extended(
+        padding: const EdgeInsets.only(bottom: 95, right: 6),
+        child: FloatingActionButton(
           heroTag: 'customer_add_bottom_fab',
           onPressed: _openAddCustomer,
           elevation: 4,
           backgroundColor: AppColors.secondary,
           foregroundColor: AppColors.onSecondary,
-          icon: const Icon(Icons.person_add_rounded, size: 20),
-          label: const Text(
-            'New Customer',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
+          tooltip: 'Add Customer',
+          child: const Icon(Icons.person_add_rounded, size: 24),
         ),
       ),
     );

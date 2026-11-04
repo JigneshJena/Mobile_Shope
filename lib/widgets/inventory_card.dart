@@ -161,8 +161,8 @@ class InventoryCard extends StatelessWidget {
                   ],
                 ),
 
-                // Mark as Returned action
-                if (!item.isReturned && onMarkReturned != null) ...[
+                // Mark as Returned action (Only allowed if stock is still remaining)
+                if (!item.isReturned && item.quantity > 0 && onMarkReturned != null) ...[
                   const SizedBox(height: 10),
                   const Divider(height: 1),
                   const SizedBox(height: 10),

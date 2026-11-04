@@ -76,7 +76,9 @@ class CustomerCard extends StatelessWidget {
 
                     // Row 2: Device Model • Phone
                     Text(
-                      '${customer.mobileModel}  •  ${customer.phone}',
+                      customer.phone.isEmpty || customer.phone.toLowerCase() == 'add later'
+                          ? '${customer.mobileModel}  •  (No Phone / Add Later)'
+                          : '${customer.mobileModel}  •  ${customer.phone}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

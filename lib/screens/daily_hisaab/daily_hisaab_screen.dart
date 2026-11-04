@@ -417,11 +417,16 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
                       color: theme.colorScheme.primary,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      Formatters.date(selectedDate),
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          Formatters.date(selectedDate),
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
                       ),
                     ),
                     if (!isToday) ...[
@@ -540,8 +545,10 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
             children: [
               _buildActivityBadge(
                 icon: Icons.person_add_rounded,
@@ -585,13 +592,18 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
           children: [
             Icon(icon, size: 12, color: color),
             const SizedBox(width: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: color,
-                letterSpacing: 0.3,
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                    letterSpacing: 0.3,
+                  ),
+                ),
               ),
             ),
           ],
@@ -993,19 +1005,38 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Cash: ${Formatters.currency(manualCashTotal)}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.creditGreen),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Cash: ${Formatters.currency(manualCashTotal)}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.creditGreen),
+                      ),
+                    ),
                   ),
-                  Text(
-                    'Online: ${Formatters.currency(manualOnlineTotal)}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.secondary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Online: ${Formatters.currency(manualOnlineTotal)}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.secondary),
+                      ),
+                    ),
                   ),
-                  Text(
-                    'TOTAL: ${Formatters.currency(manualGrandTotal)}',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'TOTAL: ${Formatters.currency(manualGrandTotal)}',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                      ),
+                    ),
                   ),
                 ],
               ),

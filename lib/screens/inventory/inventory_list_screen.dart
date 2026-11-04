@@ -238,7 +238,7 @@ class InventoryListScreen extends ConsumerWidget {
                           crossAxisCount: crossAxisCount,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
-                          mainAxisExtent: 235,
+                          mainAxisExtent: 200,
                         ),
                         itemCount: items.length,
                         itemBuilder: (context, index) {
@@ -247,7 +247,7 @@ class InventoryListScreen extends ConsumerWidget {
                             delay: Duration(milliseconds: (index % 8) * 35),
                             child: InventoryGridCard(
                               item: item,
-                              onMarkReturned: item.isReturned
+                              onMarkReturned: (item.isReturned || item.quantity <= 0)
                                   ? null
                                   : () => _handleMarkReturned(
                                         context,
@@ -279,20 +279,17 @@ class InventoryListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      // Task 12: Modern compact Add Part FAB positioned at the bottom of the Inventory Screen
+      // Sleek circular FAB safely above the bottom navigation bar
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 70, right: 8),
-        child: FloatingActionButton.extended(
+        padding: const EdgeInsets.only(bottom: 95, right: 6),
+        child: FloatingActionButton(
           heroTag: 'inventory_list_add_fab',
           onPressed: () => _openAddInventory(context),
           elevation: 4,
           backgroundColor: AppColors.secondary,
           foregroundColor: AppColors.onSecondary,
-          icon: const Icon(Icons.add_rounded, size: 20),
-          label: const Text(
-            'Add Part',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
+          tooltip: 'Add Part',
+          child: const Icon(Icons.add_rounded, size: 24),
         ),
       ),
     );

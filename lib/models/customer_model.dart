@@ -25,6 +25,10 @@ class CustomerModel {
   /// Unrepaired defects, declined services, or customer remarks stored for future visits.
   final String? unrepairedIssues;
 
+  /// Inventory spare part linked to this repair (e.g. Realme 3 Screen).
+  final String? usedPartId;
+  final String? usedPartName;
+
   const CustomerModel({
     required this.id,
     required this.name,
@@ -43,6 +47,8 @@ class CustomerModel {
     this.imeiEncrypted,
     this.hasOnlineLock = false,
     this.unrepairedIssues,
+    this.usedPartId,
+    this.usedPartName,
   });
 
   /// Amount still owed by the customer after the advance payment.
@@ -72,6 +78,8 @@ class CustomerModel {
       imeiEncrypted: map['imeiEncrypted'] as String?,
       hasOnlineLock: (map['hasOnlineLock'] as bool?) ?? false,
       unrepairedIssues: map['unrepairedIssues'] as String?,
+      usedPartId: map['usedPartId'] as String?,
+      usedPartName: map['usedPartName'] as String?,
     );
   }
 
@@ -94,6 +102,8 @@ class CustomerModel {
       'imeiEncrypted': imeiEncrypted,
       'hasOnlineLock': hasOnlineLock,
       'unrepairedIssues': unrepairedIssues,
+      'usedPartId': usedPartId,
+      'usedPartName': usedPartName,
     };
   }
 
@@ -118,6 +128,9 @@ class CustomerModel {
     bool clearImei = false,
     bool? hasOnlineLock,
     String? unrepairedIssues,
+    String? usedPartId,
+    bool clearUsedPart = false,
+    String? usedPartName,
   }) {
     return CustomerModel(
       id: id ?? this.id,
@@ -139,6 +152,8 @@ class CustomerModel {
       imeiEncrypted: clearImei ? null : (imeiEncrypted ?? this.imeiEncrypted),
       hasOnlineLock: hasOnlineLock ?? this.hasOnlineLock,
       unrepairedIssues: unrepairedIssues ?? this.unrepairedIssues,
+      usedPartId: clearUsedPart ? null : (usedPartId ?? this.usedPartId),
+      usedPartName: clearUsedPart ? null : (usedPartName ?? this.usedPartName),
     );
   }
 }
