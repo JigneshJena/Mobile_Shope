@@ -6,11 +6,13 @@ class FloatingNavItem {
   final IconData icon;
   final IconData selectedIcon;
   final String label;
+  final int badgeCount;
 
   const FloatingNavItem({
     required this.icon,
     required this.selectedIcon,
     required this.label,
+    this.badgeCount = 0,
   });
 }
 
@@ -71,6 +73,18 @@ class FloatingNavigationBar extends StatelessWidget {
                     final item = items[index];
                     final isSelected = selectedIndex == index;
 
+                    final isDense = items.length >= 6;
+                    final iconWidget = Icon(
+                      isSelected ? item.selectedIcon : item.icon,
+                      key: ValueKey('${item.label}_$isSelected'),
+                      size: isSelected ? (isDense ? 22 : 24) : (isDense ? 20 : 22),
+                      color: isSelected
+                          ? (isDark ? AppColors.tertiary : AppColors.primary)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.6)
+                              : AppColors.subtleText),
+                    );
+
                     return Flexible(
                       child: InkWell(
                         onTap: () => onTap(index),
@@ -78,8 +92,8 @@ class FloatingNavigationBar extends StatelessWidget {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
                           curve: Curves.easeInOut,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isDense ? 6 : 10,
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
@@ -95,22 +109,20 @@ class FloatingNavigationBar extends StatelessWidget {
                                 duration: const Duration(milliseconds: 200),
                                 transitionBuilder: (child, anim) =>
                                     ScaleTransition(scale: anim, child: child),
-                                child: Icon(
-                                  isSelected ? item.selectedIcon : item.icon,
-                                  key: ValueKey('${item.label}_$isSelected'),
-                                  size: isSelected ? 24 : 22,
-                                  color: isSelected
-                                      ? (isDark ? AppColors.tertiary : AppColors.primary)
-                                      : (isDark
-                                          ? Colors.white.withValues(alpha: 0.6)
-                                          : AppColors.subtleText),
-                                ),
+                                child: item.badgeCount > 0
+                                    ? Badge.count(
+                                        count: item.badgeCount,
+                                        backgroundColor: AppColors.debitRed,
+                                        textColor: Colors.white,
+                                        child: iconWidget,
+                                      )
+                                    : iconWidget,
                               ),
                               const SizedBox(height: 3),
                               Text(
                                 item.label,
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: isDense ? 9.5 : 10,
                                   fontWeight: isSelected
                                       ? FontWeight.bold
                                       : FontWeight.w500,

@@ -10,7 +10,6 @@ import '../../providers/customer_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/ledger_provider.dart';
 import '../../services/pdf_ledger_service.dart';
-import '../../widgets/common/app_progress_bar.dart';
 import '../../widgets/customer_card.dart';
 import '../customer/customer_detail_screen.dart';
 import '../weekly_hisaab/weekly_hisaab_screen.dart';
@@ -279,6 +278,8 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Daily Ledger'),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : AppColors.primary,
+        foregroundColor: isDark ? Colors.white : AppColors.onPrimary,
         actions: [
           if (isOwner)
             TextButton.icon(
@@ -287,20 +288,25 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
                   MaterialPageRoute(builder: (_) => const WeeklyHisaabScreen()),
                 );
               },
-              icon: const Icon(Icons.date_range_rounded, size: 18),
-              label: const Text('Weekly'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.onPrimary,
-              ),
+              icon: Icon(Icons.date_range_rounded, size: 18,
+                  color: isDark ? Colors.white70 : AppColors.onPrimary),
+              label: Text('Weekly',
+                  style: TextStyle(
+                      color: isDark ? Colors.white70 : AppColors.onPrimary,
+                      fontWeight: FontWeight.w600)),
             ),
           IconButton(
             icon: _isExporting
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: AppProgressBar(),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: isDark ? Colors.white : AppColors.onPrimary,
+                    ),
                   )
-                : const Icon(Icons.file_download_outlined),
+                : Icon(Icons.file_download_outlined,
+                    color: isDark ? Colors.white : AppColors.onPrimary),
             tooltip: 'Download Report (Excel / PDF)',
             onPressed: ledgerAsync.hasValue && !_isExporting
                 ? () => _showExportOptionsSheet(ledgerAsync.value!)
@@ -474,97 +480,121 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
     required int stockCount,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        gradient: isDark
+            ? LinearGradient(
+                colors: [const Color(0xFF1E293B), const Color(0xFF263040)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : LinearGradient(
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.08),
+                  AppColors.secondary.withValues(alpha: 0.06),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+          color: isDark
+              ? const Color(0xFF334155)
+              : AppColors.primary.withValues(alpha: 0.25),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildFinancialPillar(
-                  theme: theme,
-                  label: 'CASH IN',
-                  amount: finalCredit,
-                  color: AppColors.creditGreen,
-                  icon: Icons.arrow_downward_rounded,
+          // ── 3 financial pillars ───────────────────────────────────────
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildFinancialPillar(
+                    theme: theme,
+                    isDark: isDark,
+                    label: 'CASH IN',
+                    amount: finalCredit,
+                    color: AppColors.creditGreen,
+                    icon: Icons.south_rounded,
+                  ),
                 ),
-              ),
-              Container(
-                height: 32,
-                width: 1,
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-              ),
-              Expanded(
-                child: _buildFinancialPillar(
-                  theme: theme,
-                  label: 'CASH OUT',
-                  amount: finalDebit,
-                  color: AppColors.debitRed,
-                  icon: Icons.arrow_upward_rounded,
+                VerticalDivider(
+                  width: 1,
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFD1D5DB),
                 ),
-              ),
-              Container(
-                height: 32,
-                width: 1,
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-              ),
-              Expanded(
-                child: _buildFinancialPillar(
-                  theme: theme,
-                  label: 'NET BALANCE',
-                  amount: netBalance,
-                  color: netBalance >= 0 ? AppColors.creditGreen : AppColors.debitRed,
-                  icon: Icons.account_balance_wallet_rounded,
+                Expanded(
+                  child: _buildFinancialPillar(
+                    theme: theme,
+                    isDark: isDark,
+                    label: 'CASH OUT',
+                    amount: finalDebit,
+                    color: AppColors.debitRed,
+                    icon: Icons.north_rounded,
+                  ),
                 ),
-              ),
-            ],
+                VerticalDivider(
+                  width: 1,
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFD1D5DB),
+                ),
+                Expanded(
+                  child: _buildFinancialPillar(
+                    theme: theme,
+                    isDark: isDark,
+                    label: 'BALANCE',
+                    amount: netBalance,
+                    color: netBalance >= 0 ? AppColors.creditGreen : AppColors.debitRed,
+                    icon: Icons.account_balance_wallet_rounded,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
           Divider(
             height: 1,
             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            alignment: WrapAlignment.center,
-            children: [
-              _buildActivityBadge(
-                icon: Icons.person_add_rounded,
-                label: '$newCount New',
-                color: AppColors.statusInProgress,
-              ),
-              _buildActivityBadge(
-                icon: Icons.check_circle_rounded,
-                label: '$deliveredCount Delivered',
-                color: AppColors.creditGreen,
-              ),
-              if (isOwner)
+          // ── Activity badges ───────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              alignment: WrapAlignment.center,
+              children: [
                 _buildActivityBadge(
-                  icon: Icons.payments_rounded,
-                  label: 'Adv ${Formatters.currency(advanceCollected)}',
-                  color: AppColors.statusRepaired,
+                  icon: Icons.person_add_rounded,
+                  label: '$newCount New',
+                  color: AppColors.statusInProgress,
+                  isDark: isDark,
                 ),
-              _buildActivityBadge(
-                icon: Icons.build_circle_rounded,
-                label: '$stockCount Parts',
-                color: AppColors.secondary,
-              ),
-            ],
+                _buildActivityBadge(
+                  icon: Icons.check_circle_rounded,
+                  label: '$deliveredCount Delivered',
+                  color: AppColors.creditGreen,
+                  isDark: isDark,
+                ),
+                if (isOwner)
+                  _buildActivityBadge(
+                    icon: Icons.payments_rounded,
+                    label: 'Adv ${Formatters.currency(advanceCollected)}',
+                    color: AppColors.secondary,
+                    isDark: isDark,
+                  ),
+                _buildActivityBadge(
+                  icon: Icons.build_circle_rounded,
+                  label: '$stockCount Parts',
+                  color: AppColors.statusRepaired,
+                  isDark: isDark,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -573,47 +603,49 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
 
   Widget _buildFinancialPillar({
     required ThemeData theme,
+    required bool isDark,
     required String label,
     required double amount,
     required Color color,
     required IconData icon,
   }) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 3),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: isDark ? 0.2 : 0.12),
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            Formatters.currency(amount),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
             style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: isDark ? color.withValues(alpha: 0.85) : color,
+              letterSpacing: 0.4,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              Formatters.currency(amount),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -621,12 +653,14 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
     required IconData icon,
     required String label,
     required Color color,
+    required bool isDark,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
+        color: color.withValues(alpha: isDark ? 0.18 : 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -638,7 +672,7 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: color,
+              color: isDark ? Colors.white.withValues(alpha: 0.9) : color,
             ),
           ),
         ],

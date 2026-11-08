@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer_model.dart';
 import '../models/inventory_model.dart';
 import '../models/manual_ledger_model.dart';
+import '../models/note_model.dart';
 import '../models/weekly_report_model.dart';
 
 
@@ -316,6 +317,31 @@ class FirestoreService {
   /// Deletes a manual spreadsheet ledger entry by [id].
   Future<void> deleteManualLedgerEntry(String id) async {
     await _db.collection('manualLedger').doc(id).delete();
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // NOTES
+  // ────────────────────────────────────────────────────────────────
+
+  Stream<List<NoteModel>> streamNotes() {
+    return _db
+        .collection('notes')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => NoteModel.fromMap(d.id, d.data())).toList());
+  }
+
+  Future<void> addNote(NoteModel note) async {
+    await _db.collection('notes').doc(note.id).set(note.toMap());
+  }
+
+  Future<void> updateNote(NoteModel note) async {
+    await _db.collection('notes').doc(note.id).update(note.toMap());
+  }
+
+  Future<void> deleteNote(String noteId) async {
+    await _db.collection('notes').doc(noteId).delete();
   }
 }
 

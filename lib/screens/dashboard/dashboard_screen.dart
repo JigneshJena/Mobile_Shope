@@ -7,12 +7,14 @@ import '../../providers/auth_provider.dart';
 import '../../providers/customer_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/ledger_provider.dart';
+import '../../providers/notes_provider.dart';
 import '../../widgets/common/app_progress_bar.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/customer_card.dart';
 import '../customer/add_customer_screen.dart';
 import '../customer/customer_detail_screen.dart';
 import '../inventory/add_inventory_screen.dart';
+import '../notes/notes_screen.dart';
 import '../shell/app_shell.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -50,6 +52,7 @@ class DashboardScreen extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
     final today = DateTime.now();
+    final dueNotesCount = ref.watch(dueNotesCountProvider);
 
     // ── Computed data ─────────────────────────────────────────────────────────
     final customers = customersAsync.valueOrNull ?? [];
@@ -87,6 +90,20 @@ class DashboardScreen extends ConsumerWidget {
         title: Text(AppConstants.appName,
             style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
+          IconButton(
+            tooltip: 'Order Notes & Reminders',
+            icon: Badge.count(
+              count: dueNotesCount,
+              isLabelVisible: dueNotesCount > 0,
+              backgroundColor: AppColors.debitRed,
+              child: const Icon(Icons.sticky_note_2_rounded, size: 22),
+            ),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotesScreen()),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Container(
@@ -168,15 +185,20 @@ class DashboardScreen extends ConsumerWidget {
                   _QuickActionsRow(
                     isOwner: isOwner,
                     isDark: isDark,
+                    dueNotesCount: dueNotesCount,
                     onNewRepair: () => _openAddCustomer(context),
                     onAddPart: () => _openAddInventory(context),
-                    onInventory: () => ref.read(shellTabProvider.notifier).state = 2,
+                    onNotes: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const NotesScreen()),
+                      );
+                    },
                     onLedger: isOwner
                         ? () {
                             ref.read(selectedDateProvider.notifier).state = DateTime.now();
                             ref.read(shellTabProvider.notifier).state = 3;
                           }
-                        : () => ref.read(shellTabProvider.notifier).state = 1,
+                        : () => ref.read(shellTabProvider.notifier).state = 2,
                   ),
                   const SizedBox(height: 10),
 
@@ -288,7 +310,7 @@ class DashboardScreen extends ConsumerWidget {
                                 fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
                         Text(
-                          'No pending jobs. Tap "New Repair" to add one.',
+                          'No pending jobs. Tap below to create a repair job.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant),
@@ -301,8 +323,8 @@ class DashboardScreen extends ConsumerWidget {
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size(0, 40),
                             ),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('New Repair',
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('Add Job',
                                 style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
@@ -344,15 +366,13 @@ class DashboardScreen extends ConsumerWidget {
       // ── FAB ─────────────────────────────────────────────────────────────────
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 90),
-        child: FloatingActionButton.extended(
+        child: FloatingActionButton(
           heroTag: 'dashboard_fab',
           elevation: 3,
           backgroundColor: AppColors.secondary,
           foregroundColor: AppColors.onSecondary,
           onPressed: () => _openAddCustomer(context),
-          icon: const Icon(Icons.person_add_rounded, size: 20),
-          label: const Text('New Repair',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          child: const Icon(Icons.person_add_rounded, size: 24),
         ),
       ),
     );
@@ -399,7 +419,7 @@ class _StatsRow extends StatelessWidget {
       children: [
         Expanded(
           child: _MiniStatCard(
-            icon: Icons.person_add_rounded,
+            icon: Icons.people_alt_rounded,
             value: '$todayCustomers',
             label: "Today's",
             sublabel: 'Customers',
@@ -527,12 +547,14 @@ class _MiniStatCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(5),
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, size: 14, color: color),
+                    child: Icon(icon, size: 15, color: color),
                   ),
                 ],
               ),
@@ -590,17 +612,19 @@ class _QuickActionsRow extends StatelessWidget {
   const _QuickActionsRow({
     required this.isOwner,
     required this.isDark,
+    required this.dueNotesCount,
     required this.onNewRepair,
     required this.onAddPart,
-    required this.onInventory,
+    required this.onNotes,
     required this.onLedger,
   });
 
   final bool isOwner;
   final bool isDark;
+  final int dueNotesCount;
   final VoidCallback onNewRepair;
   final VoidCallback onAddPart;
-  final VoidCallback onInventory;
+  final VoidCallback onNotes;
   final VoidCallback onLedger;
 
   @override
@@ -627,18 +651,19 @@ class _QuickActionsRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         _QuickTile(
-          icon: Icons.inventory_2_rounded,
-          label: 'Parts Stock',
-          color: AppColors.statusInProgress,
+          icon: Icons.sticky_note_2_rounded,
+          label: 'Order Notes',
+          color: AppColors.primary,
           cardBg: cardBg,
           isDark: isDark,
-          onTap: onInventory,
+          badgeCount: dueNotesCount,
+          onTap: onNotes,
         ),
         const SizedBox(width: 8),
         _QuickTile(
-          icon: isOwner ? Icons.account_balance_wallet_rounded : Icons.people_rounded,
-          label: isOwner ? 'Ledger' : 'Customers',
-          color: isOwner ? AppColors.creditGreen : AppColors.primary,
+          icon: isOwner ? Icons.account_balance_wallet_rounded : Icons.inventory_2_rounded,
+          label: isOwner ? 'Ledger' : 'Stock',
+          color: isOwner ? AppColors.creditGreen : AppColors.statusInProgress,
           cardBg: cardBg,
           isDark: isDark,
           onTap: onLedger,
@@ -656,6 +681,7 @@ class _QuickTile extends StatelessWidget {
     required this.cardBg,
     required this.isDark,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
@@ -664,10 +690,13 @@ class _QuickTile extends StatelessWidget {
   final Color cardBg;
   final bool isDark;
   final VoidCallback onTap;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final iconWidget = Icon(icon, size: 18, color: color);
+
     return Expanded(
       child: Material(
         color: Colors.transparent,
@@ -691,14 +720,29 @@ class _QuickTile extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, size: 16, color: color),
-                ),
+                badgeCount > 0
+                    ? Badge.count(
+                        count: badgeCount,
+                        backgroundColor: AppColors.debitRed,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                          ),
+                          child: iconWidget,
+                        ),
+                      )
+                    : Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: iconWidget,
+                      ),
                 const SizedBox(height: 5),
                 Text(
                   label,

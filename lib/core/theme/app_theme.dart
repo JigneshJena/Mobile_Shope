@@ -15,29 +15,31 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   AppColors._();
 
-  // ── Brand palette ──────────────────────────────────────────────────────────
-  static const Color primary         = Color(0xFFA4B885); // sage green
-  static const Color secondary       = Color(0xFFD46D25); // burnt orange
-  static const Color tertiary        = Color(0xFFFDC086); // peach
-  static const Color backgroundAccent = Color(0xFFFFF6A1); // soft yellow
+  // ── Brand palette (Matched to SP Mobile Repairing Visiting Card) ────────────
+  // Visiting card: Rich Emerald/Forest Green ("MOBILE REPAIRING"),
+  // Warm Sunset/Burnt Orange ("P" & Swoosh), Deep Navy ("S" & Footer)
+  static const Color primary         = Color(0xFF1B6B3A); // rich emerald green
+  static const Color secondary       = Color(0xFFE05326); // warm vibrant orange
+  static const Color tertiary        = Color(0xFF1A2B4C); // deep navy
+  static const Color backgroundAccent = Color(0xFFFEF3C7); // soft amber highlight
 
   // ── On-surface / text colours ─────────────────────────────────────────────
-  /// Dark text — readable on primary (sage green), tertiary (peach), backgroundAccent
-  static const Color onPrimary       = Color(0xFF1C2A14); // very dark green
-  /// White text — used on secondary (burnt orange) surface
+  /// White text — high contrast (WCAG AAA) on primary green
+  static const Color onPrimary       = Color(0xFFFFFFFF);
+  /// White text — on secondary orange
   static const Color onSecondary     = Color(0xFFFFFFFF);
-  static const Color onTertiary      = Color(0xFF3B2800); // dark brown on peach
-  static const Color onBackgroundAccent = Color(0xFF3B3600); // dark olive on yellow
+  static const Color onTertiary      = Color(0xFFFFFFFF);
+  static const Color onBackgroundAccent = Color(0xFF78350F);
 
   // ── Neutrals ───────────────────────────────────────────────────────────────
   static const Color white           = Color(0xFFFFFFFF);
   static const Color black           = Color(0xFF000000);
-  static const Color darkText        = Color(0xFF0F172A); // dark navy/black
-  static const Color bodyText        = Color(0xFF1E293B); // slate dark
-  static const Color subtleText      = Color(0xFF475569); // crisp medium slate
+  static const Color darkText        = Color(0xFF0F172A); // deep navy-black
+  static const Color bodyText        = Color(0xFF1E293B); // dark slate
+  static const Color subtleText      = Color(0xFF334155); // high-contrast slate (no low-contrast washed out grey)
   static const Color divider         = Color(0xFFCBD5E1);
   static const Color disabled        = Color(0xFF94A3B8);
-  static const Color scaffoldBg      = Color(0xFFE8EEF6); // slightly deeper off-white
+  static const Color scaffoldBg      = Color(0xFFF1F5F9); // clean light slate off-white
 
   // ── Semantic ───────────────────────────────────────────────────────────────
   static const Color success         = Color(0xFF4CAF50);
@@ -63,25 +65,25 @@ class AppTheme {
   static ThemeData get lightTheme {
     const cs = ColorScheme(
       brightness: Brightness.light,
-      // Primary — sage green
+      // Primary — emerald green (from visiting card)
       primary:          AppColors.primary,
       onPrimary:        AppColors.onPrimary,
-      primaryContainer: Color(0xFFD7E8C0),
-      onPrimaryContainer: AppColors.onPrimary,
-      // Secondary — burnt orange
+      primaryContainer: Color(0xFFDCFCE7),
+      onPrimaryContainer: Color(0xFF14532D),
+      // Secondary — warm orange (from visiting card)
       secondary:        AppColors.secondary,
       onSecondary:      AppColors.onSecondary,
-      secondaryContainer: Color(0xFFF8D5B3),
-      onSecondaryContainer: Color(0xFF3B1800),
-      // Tertiary — peach
+      secondaryContainer: Color(0xFFFFEDD5),
+      onSecondaryContainer: Color(0xFF7C2D12),
+      // Tertiary — deep navy (from visiting card)
       tertiary:         AppColors.tertiary,
       onTertiary:       AppColors.onTertiary,
-      tertiaryContainer: Color(0xFFFEE0C0),
-      onTertiaryContainer: AppColors.onTertiary,
+      tertiaryContainer: Color(0xFFE2E8F0),
+      onTertiaryContainer: Color(0xFF0F172A),
       // Surface / Background
       surface:          AppColors.white,
       onSurface:        AppColors.darkText,
-      surfaceContainerHighest: Color(0xFFEEF0E9),
+      surfaceContainerHighest: Color(0xFFE2E8F0),
       onSurfaceVariant: AppColors.subtleText,
       // Outline
       outline:          AppColors.divider,
