@@ -90,20 +90,6 @@ class DashboardScreen extends ConsumerWidget {
         title: Text(AppConstants.appName,
             style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          IconButton(
-            tooltip: 'Order Notes & Reminders',
-            icon: Badge.count(
-              count: dueNotesCount,
-              isLabelVisible: dueNotesCount > 0,
-              backgroundColor: AppColors.debitRed,
-              child: const Icon(Icons.sticky_note_2_rounded, size: 22),
-            ),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotesScreen()),
-              );
-            },
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Container(
@@ -651,8 +637,8 @@ class _QuickActionsRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         _QuickTile(
-          icon: Icons.sticky_note_2_rounded,
-          label: 'Order Notes',
+          icon: Icons.note_alt_outlined,
+          label: 'Notes',
           color: AppColors.primary,
           cardBg: cardBg,
           isDark: isDark,
@@ -695,7 +681,7 @@ class _QuickTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final iconWidget = Icon(icon, size: 18, color: color);
+    final iconWidget = Icon(icon, size: 16, color: color);
 
     return Expanded(
       child: Material(
@@ -704,7 +690,7 @@ class _QuickTile extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: BorderRadius.circular(12),
@@ -725,8 +711,8 @@ class _QuickTile extends StatelessWidget {
                         count: badgeCount,
                         backgroundColor: AppColors.debitRed,
                         child: Container(
-                          width: 34,
-                          height: 34,
+                          width: 30,
+                          height: 30,
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.14),
                             shape: BoxShape.circle,
@@ -735,15 +721,15 @@ class _QuickTile extends StatelessWidget {
                         ),
                       )
                     : Container(
-                        width: 34,
-                        height: 34,
+                        width: 30,
+                        height: 30,
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.14),
                           shape: BoxShape.circle,
                         ),
                         child: iconWidget,
                       ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
                 Text(
                   label,
                   maxLines: 1,

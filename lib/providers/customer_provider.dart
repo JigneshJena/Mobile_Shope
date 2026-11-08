@@ -144,6 +144,18 @@ class CustomerNotifier extends StateNotifier<AsyncValue<void>> {
       state = AsyncValue.error(e, st);
     }
   }
+
+  /// Permanently deletes the customer document from Firestore.
+  Future<void> deleteCustomer(String customerId) async {
+    state = const AsyncValue.loading();
+    try {
+      await _firestore.deleteCustomer(customerId);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
 }
 
 final customerNotifierProvider =

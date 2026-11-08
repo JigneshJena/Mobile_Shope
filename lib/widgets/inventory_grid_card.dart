@@ -13,11 +13,15 @@ class InventoryGridCard extends StatelessWidget {
     super.key,
     required this.item,
     this.onMarkReturned,
+    this.onDelete,
+    this.onEdit,
     this.onTap,
   });
 
   final InventoryModel item;
   final VoidCallback? onMarkReturned;
+  final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
   final VoidCallback? onTap;
 
   IconData _categoryIcon() {
@@ -312,6 +316,63 @@ class InventoryGridCard extends StatelessWidget {
                       decoration: TextDecoration.none,
                     ),
                   ),
+                ),
+              ),
+            ),
+
+          // Owner Actions Menu (Edit & Delete)
+          if (!item.isReturned && (onDelete != null || onEdit != null))
+            Positioned(
+              top: 3,
+              right: 3,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.6)
+                      : Colors.white.withValues(alpha: 0.85),
+                  shape: BoxShape.circle,
+                ),
+                child: PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  iconSize: 16,
+                  icon: const Icon(Icons.more_vert_rounded),
+                  onSelected: (val) {
+                    if (val == 'edit' && onEdit != null) onEdit!();
+                    if (val == 'delete' && onDelete != null) onDelete!();
+                  },
+                  itemBuilder: (ctx) => [
+                    if (onEdit != null)
+                      const PopupMenuItem(
+                        value: 'edit',
+                        height: 34,
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 15),
+                            SizedBox(width: 8),
+                            Text('Edit Part', style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    if (onDelete != null)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        height: 34,
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded,
+                                size: 15, color: AppColors.debitRed),
+                            SizedBox(width: 8),
+                            Text('Delete',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.debitRed,
+                                    fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

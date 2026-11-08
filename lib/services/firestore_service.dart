@@ -34,6 +34,11 @@ class FirestoreService {
         .update(customer.toMap());
   }
 
+  /// Permanently deletes the customer document identified by [customerId].
+  Future<void> deleteCustomer(String customerId) async {
+    await _db.collection('customers').doc(customerId).delete();
+  }
+
   /// Updates only the [status] field (and optionally [dateDelivered]).
   Future<void> updateCustomerStatus(
     String customerId,
@@ -108,6 +113,19 @@ class FirestoreService {
   Future<String> addInventory(InventoryModel item) async {
     final ref = await _db.collection('inventory').add(item.toMap());
     return ref.id;
+  }
+
+  /// Updates an existing inventory item in Firestore.
+  Future<void> updateInventory(InventoryModel item) async {
+    await _db
+        .collection('inventory')
+        .doc(item.id)
+        .update(item.toMap());
+  }
+
+  /// Permanently deletes an inventory item from Firestore.
+  Future<void> deleteInventory(String itemId) async {
+    await _db.collection('inventory').doc(itemId).delete();
   }
 
   /// Marks an inventory item as returned and records the [returnDate].

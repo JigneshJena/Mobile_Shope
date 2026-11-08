@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
+import '../../models/inventory_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../widgets/common/app_progress_bar.dart';
@@ -60,6 +61,323 @@ class InventoryListScreen extends ConsumerWidget {
         }
       }
     }
+  }
+
+  Future<void> _handleDeleteItem(
+    BuildContext context,
+    WidgetRef ref,
+    InventoryModel item,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.debitRed),
+            SizedBox(width: 8),
+            Text('Delete Inventory Part?'),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${item.itemName}" from inventory?\n\n'
+          'This will remove it completely from the database.',
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.debitRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(inventoryNotifierProvider.notifier).deleteItem(item.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Item "${item.itemName}" deleted from inventory.'),
+              backgroundColor: AppColors.debitRed,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete item: $e'),
+              backgroundColor: AppColors.debitRed,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _handleEditItem(
+    BuildContext context,
+    WidgetRef ref,
+    InventoryModel item,
+  ) async {
+    final nameCtrl = TextEditingController(text: item.itemName);
+    final qtyCtrl = TextEditingController(text: item.quantity.toString());
+    final priceCtrl =
+        TextEditingController(text: item.purchasePrice.toStringAsFixed(0));
+    final supplierCtrl = TextEditingController(text: item.supplierName ?? '');
+    String selectedCategory = item.category;
+    final formKey = GlobalKey<FormState>();
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Inventory Part'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameCtrl,
+                    decoration:
+                        const InputDecoration(labelText: 'Part / Item Name *'),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Enter part name' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedCategory,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                    items: InventoryCategory.all.map((c) {
+                      return DropdownMenuItem(
+                        value: c,
+                        child: Text(InventoryCategory.label(c)),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedCategory = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: qtyCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration:
+                              const InputDecoration(labelText: 'Quantity *'),
+                          validator: (v) {
+                            final q = int.tryParse(v?.trim() ?? '');
+                            return (q == null || q < 0) ? 'Valid qty' : null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextFormField(
+                          controller: priceCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration:
+                              const InputDecoration(labelText: 'Price (₹) *'),
+                          validator: (v) {
+                            final p = double.tryParse(v?.trim() ?? '');
+                            return (p == null || p < 0) ? 'Valid price' : null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: supplierCtrl,
+                    decoration: const InputDecoration(
+                        labelText: 'Supplier Name (Optional)'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.of(ctx).pop(true);
+                }
+              },
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      final updatedItem = item.copyWith(
+        itemName: nameCtrl.text.trim(),
+        category: selectedCategory,
+        quantity: int.tryParse(qtyCtrl.text.trim()) ?? item.quantity,
+        purchasePrice:
+            double.tryParse(priceCtrl.text.trim()) ?? item.purchasePrice,
+        supplierName: supplierCtrl.text.trim().isEmpty
+            ? null
+            : supplierCtrl.text.trim(),
+      );
+      try {
+        await ref
+            .read(inventoryNotifierProvider.notifier)
+            .updateItem(updatedItem);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Inventory part updated.'),
+              backgroundColor: AppColors.secondary,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update part: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _showItemDetailsSheet(
+    BuildContext context,
+    WidgetRef ref,
+    InventoryModel item,
+    bool isOwner,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final theme = Theme.of(context);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.itemName,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (item.isReturned)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.debitRed.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('DEFECTIVE / RETURNED',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.debitRed)),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _detailRow('Category', InventoryCategory.label(item.category)),
+              _detailRow('Stock Quantity', '${item.quantity} units in stock'),
+              _detailRow('Purchase Price', Formatters.currency(item.purchasePrice)),
+              _detailRow('Total Inventory Value', Formatters.currency(item.totalValue)),
+              if (item.supplierName != null && item.supplierName!.isNotEmpty)
+                _detailRow('Supplier', item.supplierName!),
+              _detailRow('Added On', Formatters.date(item.dateAdded)),
+              const SizedBox(height: 16),
+              if (isOwner) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.edit_outlined, size: 16),
+                        label: const Text('Edit Part'),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          _handleEditItem(context, ref, item);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.debitRed,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                        label: const Text('Delete Part'),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          _handleDeleteItem(context, ref, item);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
   }
 
   void _openAddInventory(BuildContext context) {
@@ -212,6 +530,14 @@ class InventoryListScreen extends ConsumerWidget {
                                         item.id,
                                         item.itemName,
                                       ),
+                              onEdit: isOwner
+                                  ? () => _handleEditItem(context, ref, item)
+                                  : null,
+                              onDelete: isOwner
+                                  ? () => _handleDeleteItem(context, ref, item)
+                                  : null,
+                              onTap: () => _showItemDetailsSheet(
+                                  context, ref, item, isOwner),
                             ),
                           );
                         },

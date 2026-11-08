@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/notes_provider.dart';
 import '../../widgets/common/floating_nav_bar.dart';
 import '../customer/customer_list_screen.dart';
 import '../daily_hisaab/daily_hisaab_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../inventory/inventory_list_screen.dart';
-import '../notes/notes_screen.dart';
 import '../settings/settings_screen.dart';
 
 final shellTabProvider = StateProvider<int>((ref) => 0);
@@ -19,7 +17,6 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isOwner = ref.watch(isOwnerProvider);
     final selectedIndex = ref.watch(shellTabProvider);
-    final dueNotesCount = ref.watch(dueNotesCountProvider);
 
     final items = <FloatingNavItem>[
       const FloatingNavItem(
@@ -43,12 +40,6 @@ class AppShell extends ConsumerWidget {
           selectedIcon: Icons.account_balance_wallet_rounded,
           label: 'Ledger',
         ),
-      FloatingNavItem(
-        icon: Icons.sticky_note_2_outlined,
-        selectedIcon: Icons.sticky_note_2_rounded,
-        label: 'Notes',
-        badgeCount: dueNotesCount,
-      ),
       const FloatingNavItem(
         icon: Icons.settings_outlined,
         selectedIcon: Icons.settings_rounded,
@@ -61,7 +52,6 @@ class AppShell extends ConsumerWidget {
       const CustomerListScreen(),
       const InventoryListScreen(),
       if (isOwner) const DailyHisaabScreen(),
-      const NotesScreen(),
       const SettingsScreen(),
     ];
 

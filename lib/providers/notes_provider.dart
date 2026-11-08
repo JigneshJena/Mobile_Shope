@@ -40,6 +40,7 @@ class NotesNotifier extends AsyncNotifier<void> {
     required String title,
     required String body,
     DateTime? reminderDate,
+    int colorIndex = 0,
   }) async {
     final note = NoteModel(
       id: const Uuid().v4(),
@@ -48,6 +49,7 @@ class NotesNotifier extends AsyncNotifier<void> {
       reminderDate: reminderDate,
       createdAt: DateTime.now(),
       createdBy: _uid,
+      colorIndex: colorIndex,
     );
     await _fs.addNote(note);
   }

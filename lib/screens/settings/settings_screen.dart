@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../core/utils/formatters.dart';
+import '../../models/note_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notes_provider.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_text_field.dart';
 import '../../widgets/common/glass_card.dart';
+import '../notes/notes_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -239,7 +243,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 3. Owner Only: Create Staff Account Section
+            // 3. Reminders & Alerts (Moved to settings as requested)
+            AnimatedEntrance(
+              delay: const Duration(milliseconds: 120),
+              child: _RemindersSection(
+                theme: theme,
+                isDark: themeMode == ThemeMode.dark,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 4. Owner Only: Create Staff Account Section
             if (isOwner) ...[
               AnimatedEntrance(
                 delay: const Duration(milliseconds: 150),
@@ -398,6 +412,154 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reminders Section in Settings
+// ─────────────────────────────────────────────────────────────────────────────
+class _RemindersSection extends ConsumerWidget {
+  const _RemindersSection({required this.theme, required this.isDark});
+  final ThemeData theme;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notesAsync = ref.watch(notesStreamProvider);
+    final notes = notesAsync.valueOrNull ?? [];
+    final reminderNotes = notes.where((n) => n.hasReminder).toList();
+    final dueCount = reminderNotes.where((n) => n.isReminderDue).length;
+
+    return GlassCard(
+      padding: const EdgeInsets.all(4.0),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: dueCount > 0,
+          leading: Icon(
+            dueCount > 0
+                ? Icons.notifications_active_rounded
+                : Icons.alarm_rounded,
+            color: dueCount > 0 ? AppColors.debitRed : AppColors.secondary,
+            size: 24,
+          ),
+          title: Row(
+            children: [
+              const Text(
+                'Reminders & Alerts',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              if (dueCount > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.debitRed.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$dueCount DUE',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.debitRed,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          subtitle: Text(
+            reminderNotes.isEmpty
+                ? 'No upcoming reminders set'
+                : '${reminderNotes.length} reminder${reminderNotes.length > 1 ? 's' : ''} scheduled',
+          ),
+          children: [
+            if (reminderNotes.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  children: [
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No parts delivery or order reminders scheduled yet.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: () => NotesScreen.openEditor(context),
+                      icon: const Icon(Icons.add_alarm_rounded, size: 16),
+                      label: const Text('Add a Reminder Note'),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Column(
+                  children: [
+                    const Divider(),
+                    ...reminderNotes.map((note) {
+                      return ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        leading: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: (note.isReminderDue
+                                    ? AppColors.debitRed
+                                    : AppColors.secondary)
+                                .withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            note.isReminderDue
+                                ? Icons.notifications_active_rounded
+                                : Icons.alarm_rounded,
+                            size: 16,
+                            color: note.isReminderDue
+                                ? AppColors.debitRed
+                                : AppColors.secondary,
+                          ),
+                        ),
+                        title: Text(
+                          note.title.isNotEmpty ? note.title : 'Reminder',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: note.isReminderDue ? AppColors.debitRed : null,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${Formatters.date(note.reminderDate)} • ${note.body}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                        onTap: () => NotesScreen.openEditor(context, note: note),
+                      );
+                    }),
+                    const SizedBox(height: 6),
+                    TextButton.icon(
+                      onPressed: () => NotesScreen.openEditor(context),
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: const Text('New Reminder Note',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

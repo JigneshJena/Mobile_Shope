@@ -7,6 +7,7 @@ class NoteModel {
   final DateTime? reminderDate; // null = no reminder
   final DateTime createdAt;
   final String createdBy; // uid
+  final int colorIndex; // 0: yellow, 1: green, 2: blue, 3: orange, 4: purple, 5: slate
 
   const NoteModel({
     required this.id,
@@ -15,6 +16,7 @@ class NoteModel {
     this.reminderDate,
     required this.createdAt,
     required this.createdBy,
+    this.colorIndex = 0,
   });
 
   bool get hasReminder => reminderDate != null;
@@ -29,6 +31,7 @@ class NoteModel {
     'reminderDate': reminderDate != null ? Timestamp.fromDate(reminderDate!) : null,
     'createdAt': Timestamp.fromDate(createdAt),
     'createdBy': createdBy,
+    'colorIndex': colorIndex,
   };
 
   factory NoteModel.fromMap(String id, Map<String, dynamic> map) => NoteModel(
@@ -42,6 +45,7 @@ class NoteModel {
         ? (map['createdAt'] as Timestamp).toDate()
         : DateTime.now(),
     createdBy: map['createdBy'] as String? ?? '',
+    colorIndex: map['colorIndex'] as int? ?? 0,
   );
 
   NoteModel copyWith({
@@ -51,6 +55,7 @@ class NoteModel {
     Object? reminderDate = _sentinel,
     DateTime? createdAt,
     String? createdBy,
+    int? colorIndex,
   }) {
     return NoteModel(
       id: id ?? this.id,
@@ -61,6 +66,7 @@ class NoteModel {
           : reminderDate as DateTime?,
       createdAt: createdAt ?? this.createdAt,
       createdBy: createdBy ?? this.createdBy,
+      colorIndex: colorIndex ?? this.colorIndex,
     );
   }
 }

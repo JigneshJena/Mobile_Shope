@@ -84,6 +84,30 @@ class InventoryNotifier extends StateNotifier<AsyncValue<void>> {
       state = AsyncValue.error(e, st);
     }
   }
+
+  /// Updates an existing inventory item in Firestore.
+  Future<void> updateItem(InventoryModel item) async {
+    state = const AsyncValue.loading();
+    try {
+      await _firestore.updateInventory(item);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  /// Permanently deletes an inventory item from Firestore.
+  Future<void> deleteItem(String itemId) async {
+    state = const AsyncValue.loading();
+    try {
+      await _firestore.deleteInventory(itemId);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
 }
 
 final inventoryNotifierProvider =

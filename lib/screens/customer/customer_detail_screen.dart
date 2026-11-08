@@ -509,6 +509,160 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
     }
   }
 
+  Future<void> _confirmDeleteCustomer() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.debitRed),
+            SizedBox(width: 8),
+            Text('Delete Customer Job?'),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${_customer.name}" and this entire repair record?\n\n'
+          'This will remove it completely from the database.',
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.debitRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(customerNotifierProvider.notifier).deleteCustomer(_customer.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Customer "${_customer.name}" deleted from database.'),
+              backgroundColor: AppColors.debitRed,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete customer: $e'),
+              backgroundColor: AppColors.debitRed,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showEditDetailsDialog() async {
+    final nameCtrl = TextEditingController(text: _customer.name);
+    final phoneCtrl = TextEditingController(text: _customer.phone);
+    final modelCtrl = TextEditingController(text: _customer.mobileModel);
+    final issueCtrl = TextEditingController(text: _customer.issueDescription);
+    final formKey = GlobalKey<FormState>();
+
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Job Details'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppTextField(
+                  label: 'Customer Name *',
+                  controller: nameCtrl,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Enter customer name' : null,
+                ),
+                const SizedBox(height: 10),
+                AppTextField(
+                  label: 'Phone Number',
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 10),
+                AppTextField(
+                  label: 'Mobile Model *',
+                  controller: modelCtrl,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Enter mobile model' : null,
+                ),
+                const SizedBox(height: 10),
+                AppTextField(
+                  label: 'Problem / Issue *',
+                  controller: issueCtrl,
+                  maxLines: 2,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Enter issue description' : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.of(ctx).pop(true);
+              }
+            },
+            child: const Text('Save Changes'),
+          ),
+        ],
+      ),
+    );
+
+    if (updated == true && mounted) {
+      final newCustomer = _customer.copyWith(
+        name: nameCtrl.text.trim(),
+        phone: phoneCtrl.text.trim(),
+        mobileModel: modelCtrl.text.trim(),
+        issueDescription: issueCtrl.text.trim(),
+      );
+      try {
+        await ref.read(customerNotifierProvider.notifier).updateCustomer(newCustomer);
+        setState(() => _customer = newCustomer);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Customer details updated.'),
+              backgroundColor: AppColors.secondary,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update details: $e'),
+              backgroundColor: AppColors.debitRed,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   void _generatePdfBill() {
     PdfBillService.instance.generateAndShareBill(_customer);
   }
@@ -539,6 +693,18 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
             tooltip: 'Print / Share Bill (PDF)',
             onPressed: _generatePdfBill,
           ),
+          if (isOwner) ...[
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Job Details (Owner)',
+              onPressed: _showEditDetailsDialog,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.debitRed),
+              tooltip: 'Delete Job (Owner)',
+              onPressed: _confirmDeleteCustomer,
+            ),
+          ],
         ],
       ),
       body: LoadingOverlay(
