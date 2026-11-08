@@ -1,6 +1,7 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/customer_model.dart';
 import '../services/firestore_service.dart';
+import 'auth_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Service instance provider
@@ -10,11 +11,13 @@ final firestoreServiceProvider =
     Provider<FirestoreService>((ref) => FirestoreService());
 
 // ---------------------------------------------------------------------------
-// Stream of all customers
+// Stream of all customers (only active when logged in)
 // ---------------------------------------------------------------------------
 
 final customersStreamProvider =
     StreamProvider<List<CustomerModel>>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
   return ref.watch(firestoreServiceProvider).streamCustomers();
 });
 
@@ -24,6 +27,8 @@ final customersStreamProvider =
 
 final customersByStatusProvider =
     StreamProvider.family<List<CustomerModel>, String>((ref, status) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
   return ref.watch(firestoreServiceProvider).streamCustomersByStatus(status);
 });
 

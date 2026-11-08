@@ -1,14 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/inventory_model.dart';
 import '../services/firestore_service.dart';
+import 'auth_provider.dart';
 import 'customer_provider.dart'; // re-exports firestoreServiceProvider
 
 // ---------------------------------------------------------------------------
-// Stream of all inventory items
+// Stream of all inventory items (only active when logged in)
 // ---------------------------------------------------------------------------
 
 final inventoryStreamProvider =
     StreamProvider<List<InventoryModel>>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
   return ref.watch(firestoreServiceProvider).streamInventory();
 });
 

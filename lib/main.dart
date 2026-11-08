@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,25 +8,19 @@ import 'providers/auth_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/shell/app_shell.dart';
 import 'screens/splash/splash_screen.dart';
-import 'services/auth_service.dart';
 import 'widgets/common/app_progress_bar.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
   }
-
-  // Task 6: Ensure owner account is pre-seeded in Firebase in the background
-  // without blocking the main thread so the app opens instantly.
-  AuthService().seedOwnerAccount().timeout(
-    const Duration(seconds: 4),
-    onTimeout: () => debugPrint('Owner account seeding timed out'),
-  ).catchError((e) {
-    debugPrint('Owner account seeding error: $e');
-  });
 
   runApp(
     const ProviderScope(

@@ -3,6 +3,7 @@ import '../models/manual_ledger_model.dart';
 import '../models/weekly_report_model.dart';
 import '../services/firestore_service.dart';
 import '../services/excel_export_service.dart';
+import 'auth_provider.dart';
 import 'customer_provider.dart'; // re-exports firestoreServiceProvider
 
 // ---------------------------------------------------------------------------
@@ -16,7 +17,9 @@ final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 // ---------------------------------------------------------------------------
 
 final dailyLedgerProvider =
-    FutureProvider.family<Map<String, dynamic>, DateTime>((ref, date) {
+    FutureProvider.family<Map<String, dynamic>, DateTime>((ref, date) async {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return {};
   return ref.watch(firestoreServiceProvider).getDailyLedger(date);
 });
 
@@ -26,6 +29,8 @@ final dailyLedgerProvider =
 
 final manualLedgerStreamProvider =
     StreamProvider.family<List<ManualLedgerEntry>, DateTime>((ref, date) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
   return ref.watch(firestoreServiceProvider).streamManualLedgerByDate(date);
 });
 
@@ -36,6 +41,8 @@ final manualLedgerStreamProvider =
 
 final weeklyReportsProvider =
     StreamProvider<List<WeeklyReportModel>>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
   return ref.watch(firestoreServiceProvider).streamWeeklyReports();
 });
 

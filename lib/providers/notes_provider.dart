@@ -5,8 +5,10 @@ import '../providers/auth_provider.dart';
 import '../providers/customer_provider.dart'; // re-exports firestoreServiceProvider
 import '../services/firestore_service.dart';
 
-// Stream of all notes (sorted: due reminders first, then by createdAt desc)
+// Stream of all notes (only active when logged in)
 final notesStreamProvider = StreamProvider<List<NoteModel>>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
   final fs = ref.watch(firestoreServiceProvider);
   return fs.streamNotes();
 });
