@@ -96,57 +96,14 @@ class InventoryListScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // 1. Category Filter Chips (Horizontal Scroll)
-          SizedBox(
-            height: 48,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: FilterChip(
-                    label: Text(
-                      'All',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: currentCategory == null
-                            ? Colors.white
-                            : theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    selected: currentCategory == null,
-                    selectedColor: AppColors.primary,
-                    onSelected: (_) {
-                      ref.read(inventoryCategoryFilterProvider.notifier).state = null;
-                    },
-                  ),
-                ),
-                ...InventoryCategory.all.map((cat) {
-                  final isSelected = currentCategory == cat;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: FilterChip(
-                      label: Text(
-                        InventoryCategory.label(cat),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isSelected
-                              ? Colors.white
-                              : theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      selected: isSelected,
-                      selectedColor: AppColors.primary,
-                      onSelected: (selected) {
-                        ref.read(inventoryCategoryFilterProvider.notifier).state =
-                            selected ? cat : null;
-                      },
-                    ),
-                  );
-                }),
-              ],
+          // 1. Category Filter Dropdown
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: _CategoryDropdown(
+              currentCategory: currentCategory,
+              onChanged: (val) =>
+                  ref.read(inventoryCategoryFilterProvider.notifier).state = val,
+              theme: theme,
             ),
           ),
 
@@ -290,6 +247,128 @@ class InventoryListScreen extends ConsumerWidget {
           foregroundColor: AppColors.onSecondary,
           tooltip: 'Add Part',
           child: const Icon(Icons.add_rounded, size: 24),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Category filter dropdown widget
+// ─────────────────────────────────────────────────────────────────────────────
+class _CategoryDropdown extends StatelessWidget {
+  const _CategoryDropdown({
+    required this.currentCategory,
+    required this.onChanged,
+    required this.theme,
+  });
+
+  final String? currentCategory;
+  final ValueChanged<String?> onChanged;
+  final ThemeData theme;
+
+  String _label(String? cat) =>
+      cat == null ? 'All Categories' : InventoryCategory.label(cat);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+    final fillColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45);
+
+    return GestureDetector(
+      onTap: () async {
+        final box = context.findRenderObject() as RenderBox;
+        final offset = box.localToGlobal(Offset.zero);
+        final size = box.size;
+        final allOptions = <String?>[null, ...InventoryCategory.all];
+
+        final chosen = await showMenu<String?>(
+          context: context,
+          position: RelativeRect.fromLTRB(
+            offset.dx,
+            offset.dy + size.height + 4,
+            offset.dx + size.width,
+            offset.dy + size.height + 4 + 44.0 * allOptions.length,
+          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 4,
+          items: allOptions.map((opt) {
+            final isSelected = currentCategory == opt;
+            return PopupMenuItem<String?>(
+              value: opt,
+              height: 44,
+              child: Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary
+                          .withValues(alpha: isSelected ? 1.0 : 0.4),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    _label(opt),
+                    style: TextStyle(
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 13,
+                      color: isSelected
+                          ? AppColors.primary
+                          : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  if (isSelected) ...[
+                    const Spacer(),
+                    const Icon(Icons.check_rounded,
+                        size: 16, color: AppColors.primary),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+        );
+
+        if (chosen != currentCategory) {
+          onChanged(chosen);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: fillColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: AppColors.primary
+                    .withValues(alpha: currentCategory == null ? 1.0 : 0.6),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _label(currentCategory),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.keyboard_arrow_down_rounded,
+                size: 20, color: theme.colorScheme.onSurfaceVariant),
+          ],
         ),
       ),
     );

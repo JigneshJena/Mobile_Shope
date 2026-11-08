@@ -8,19 +8,15 @@ import '../dashboard/dashboard_screen.dart';
 import '../inventory/inventory_list_screen.dart';
 import '../settings/settings_screen.dart';
 
-class AppShell extends ConsumerStatefulWidget {
+final shellTabProvider = StateProvider<int>((ref) => 0);
+
+class AppShell extends ConsumerWidget {
   const AppShell({super.key});
 
   @override
-  ConsumerState<AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends ConsumerState<AppShell> {
-  int _selectedIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isOwner = ref.watch(isOwnerProvider);
+    final selectedIndex = ref.watch(shellTabProvider);
 
     final items = <FloatingNavItem>[
       const FloatingNavItem(
@@ -59,7 +55,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       const SettingsScreen(),
     ];
 
-    final activeIndex = _selectedIndex >= screens.length ? 0 : _selectedIndex;
+    final activeIndex = selectedIndex >= screens.length ? 0 : selectedIndex;
 
     return Scaffold(
       extendBody: true,
@@ -91,9 +87,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         selectedIndex: activeIndex,
         items: items,
         onTap: (idx) {
-          setState(() {
-            _selectedIndex = idx;
-          });
+          ref.read(shellTabProvider.notifier).state = idx;
         },
       ),
     );

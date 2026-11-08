@@ -384,7 +384,9 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+          color: isToday
+              ? AppColors.creditGreen.withValues(alpha: 0.5)
+              : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
         ),
         boxShadow: [
           BoxShadow(
@@ -413,45 +415,36 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
                   children: [
                     Icon(
                       Icons.calendar_today_rounded,
-                      size: 15,
-                      color: theme.colorScheme.primary,
+                      size: 14,
+                      color: isToday
+                          ? AppColors.creditGreen
+                          : theme.colorScheme.primary,
                     ),
                     const SizedBox(width: 6),
                     Flexible(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          Formatters.date(selectedDate),
+                          isToday
+                              ? 'Today, ${Formatters.date(selectedDate)}'
+                              : Formatters.date(selectedDate),
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
+                            color: isToday
+                                ? AppColors.creditGreen
+                                : theme.colorScheme.onSurface,
                           ),
                         ),
                       ),
                     ),
-                    if (!isToday) ...[
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          ref.read(selectedDateProvider.notifier).state = DateTime.now();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Today',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_drop_down_rounded,
+                      size: 18,
+                      color: isToday
+                          ? AppColors.creditGreen
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
                   ],
                 ),
               ),
@@ -873,7 +866,9 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'No spreadsheet entries recorded for today.',
+                      DateUtils.isSameDay(selectedDate, DateTime.now())
+                          ? 'No spreadsheet entries recorded for today.'
+                          : 'No spreadsheet entries on ${Formatters.date(selectedDate)}.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: theme.colorScheme.onSurface,
@@ -1076,7 +1071,9 @@ class _DailyHisaabScreenState extends ConsumerState<DailyHisaabScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'New repair jobs created today will automatically appear here.',
+              DateUtils.isSameDay(selectedDate, DateTime.now())
+                  ? 'New repair jobs created today will automatically appear here.'
+                  : 'Repair jobs created on ${Formatters.date(selectedDate)} will appear here.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

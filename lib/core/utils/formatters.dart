@@ -47,6 +47,14 @@ abstract class Formatters {
     return date(dt);
   }
 
+  /// Compact currency: ₹1.2K, ₹1.5L, or full for small amounts.
+  static String compactCurrency(num? amount) {
+    if (amount == null) return '₹0';
+    if (amount >= 100000) return '₹${(amount / 100000).toStringAsFixed(1)}L';
+    if (amount >= 1000) return '₹${(amount / 1000).toStringAsFixed(1)}K';
+    return _currencyFmt.format(amount);
+  }
+
   /// Formats [dt] as 'Mon, 17 Sep 2026 • 4:32 PM' — used for the "Added on" display.
   static String createdAtFull(DateTime dt) {
     final dayName = DateFormat('EEE').format(dt);   // Mon, Tue …

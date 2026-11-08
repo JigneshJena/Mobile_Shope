@@ -12,10 +12,20 @@ import 'widgets/common/app_progress_bar.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase initialization error: $e');
+  }
 
-  // Task 6: Ensure owner account is pre-seeded in Firebase
-  await AuthService().seedOwnerAccount();
+  // Task 6: Ensure owner account is pre-seeded in Firebase in the background
+  // without blocking the main thread so the app opens instantly.
+  AuthService().seedOwnerAccount().timeout(
+    const Duration(seconds: 4),
+    onTimeout: () => debugPrint('Owner account seeding timed out'),
+  ).catchError((e) {
+    debugPrint('Owner account seeding error: $e');
+  });
 
   runApp(
     const ProviderScope(

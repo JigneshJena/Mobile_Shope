@@ -211,60 +211,17 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
             ),
           ),
 
-          // 2. Status Filter Chips (Horizontal Scroll)
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              physics: const BouncingScrollPhysics(),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: FilterChip(
-                    label: Text(
-                      'All',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: currentFilter == null
-                            ? Colors.white
-                            : theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    selected: currentFilter == null,
-                    selectedColor: AppColors.primary,
-                    onSelected: (_) {
-                      ref.read(customerStatusFilterProvider.notifier).state = null;
-                    },
-                  ),
-                ),
-                ...RepairStatus.all.map((status) {
-                  final isSelected = currentFilter == status;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: FilterChip(
-                      label: Text(
-                        RepairStatus.label(status),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isSelected
-                              ? Colors.white
-                              : theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      selected: isSelected,
-                      selectedColor: AppColors.primary,
-                      onSelected: (selected) {
-                        ref.read(customerStatusFilterProvider.notifier).state =
-                            selected ? status : null;
-                      },
-                    ),
-                  );
-                }),
-              ],
+          // 2. Status Filter Dropdown
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: _StatusDropdown(
+              currentFilter: currentFilter,
+              onChanged: (val) =>
+                  ref.read(customerStatusFilterProvider.notifier).state = val,
+              theme: theme,
+              isDark: isDark,
             ),
           ),
-          const SizedBox(height: 8),
 
           // 3. Customer Grid View
           Expanded(
@@ -440,6 +397,130 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 tooltip: 'Add Customer',
                 child: const Icon(Icons.person_add_rounded, size: 24),
               ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status filter dropdown widget
+// ─────────────────────────────────────────────────────────────────────────────
+class _StatusDropdown extends StatelessWidget {
+  const _StatusDropdown({
+    required this.currentFilter,
+    required this.onChanged,
+    required this.theme,
+    required this.isDark,
+  });
+
+  final String? currentFilter;
+  final ValueChanged<String?> onChanged;
+  final ThemeData theme;
+  final bool isDark;
+
+  static const _statusColors = {
+    RepairStatus.pending: AppColors.statusPending,
+    RepairStatus.inProgress: AppColors.statusInProgress,
+    RepairStatus.repaired: AppColors.statusRepaired,
+    RepairStatus.delivered: AppColors.creditGreen,
+  };
+
+  String _label(String? s) =>
+      s == null ? 'All Status' : RepairStatus.label(s);
+
+  Color _dotColor(String? s) =>
+      s == null ? AppColors.primary : (_statusColors[s] ?? AppColors.primary);
+
+  @override
+  Widget build(BuildContext context) {
+    final dotColor = _dotColor(currentFilter);
+    final fillColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45);
+
+    return GestureDetector(
+      onTap: () async {
+        final box = context.findRenderObject() as RenderBox;
+        final offset = box.localToGlobal(Offset.zero);
+        final size = box.size;
+        final allOptions = <String?>[null, ...RepairStatus.all];
+
+        final chosen = await showMenu<String?>(
+          context: context,
+          position: RelativeRect.fromLTRB(
+            offset.dx,
+            offset.dy + size.height + 4,
+            offset.dx + size.width,
+            offset.dy + size.height + 4 + 48.0 * allOptions.length,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 4,
+          items: allOptions.map((opt) {
+            final c = _dotColor(opt);
+            final isSelected = currentFilter == opt;
+            return PopupMenuItem<String?>(
+              value: opt,
+              height: 44,
+              child: Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    _label(opt),
+                    style: TextStyle(
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 13,
+                      color: isSelected ? c : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  if (isSelected) ...[
+                    const Spacer(),
+                    Icon(Icons.check_rounded, size: 16, color: c),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+        );
+
+        if (chosen != currentFilter) {
+          onChanged(chosen);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: fillColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                  color: dotColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _label(currentFilter),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.keyboard_arrow_down_rounded,
+                size: 20, color: theme.colorScheme.onSurfaceVariant),
+          ],
+        ),
       ),
     );
   }
